@@ -1,0 +1,57 @@
+Defenitions of what the paramters are and mean
+
+model: defines model to train 
+ - learning rate
+ - target: class that will be initiated (KL = inclused divergence loss to reg latent space)
+ - params
+    - monitor: used for logging/checkpoints
+    - embed_dim/ddconfig: dim of the latent space (output encoder -> input decoder)
+    - loss condig
+        - target: training loss in LPIPS + discriminatopr loss
+            - instead of just L2 pixel loss, LPIPS give perceptual simularoty
+            - includes discriminator to improve realism
+        - params
+            - disc start: # of steps
+            - KL weight; weight for KL divergence
+            - disc weight: weight for discriminator loss in total loss
+
+    - ddconfig: diffusion decoder coonfig
+        These define the U-Net-style encoder/decoder inside the autoencoder.
+        - double_z: Split latent into mu/sigma for VAE reparameterization
+        - z_channels: Dim of latent feature maps
+        - resolution: Input image resolution
+        - in_channels: Input image channels (RGB)
+        - out_ch: Output image channels (RGB)
+        - ch: Base number of channels
+        - ch_multi: Channel multipliers at each downsampling stage
+
+        - num_res_blocks: # of residual blocks per stage
+        - attn_resolutions: apply self-attention at feature map
+        - dropout: drop rate
+
+data:
+- target: wrapper that handels Lightning data module logic
+- params
+    - batch-size
+    - wrap: internal lofic used to wrap datasets for lighting
+    - train
+        - target: dataclass set used for training
+        - params
+            - size: size to crop to 
+            - degradation: validation set config
+
+Lightning: pytorch lightning trainer setup
+logs images during training
+- callbacks
+    - image_logger
+        - target
+    - params ...
+- trainer
+    - benchmark: enables cudnn benchmarking for preofmrancing tuning
+    - accumalre_grad_batches: simulates bigger batchsize bu accumulating over 2 batched before updating
+
+summary
+model	    Autoencoder + loss config
+data	    Uses ImageNet SR dataset
+lightning	Controls logging, training behavior
+trainer	    Lightning-level training tuning
