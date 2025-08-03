@@ -708,10 +708,10 @@ if __name__ == "__main__":
                 pudb.set_trace()
 
 
-        import signal
+        # import signal
 
-        signal.signal(signal.SIGUSR1, melk)
-        signal.signal(signal.SIGUSR2, divein)
+        # signal.signal(signal.SIGUSR1, melk)
+        # signal.signal(signal.SIGUSR2, divein)
 
         # run
         if opt.train:
