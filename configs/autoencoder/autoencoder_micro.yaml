@@ -3,7 +3,7 @@ model:
   target: ldm.models.autoencoder.AutoencoderKL
   params:
     monitor: "val/rec_loss"
-    embed_dim: 64
+    embed_dim: 16
     lossconfig:
       target: ldm.modules.losses.LPIPSWithDiscriminator
       params:
@@ -13,31 +13,32 @@ model:
 
     ddconfig:
       double_z: True
-      z_channels: 64
-      resolution: 256
+      z_channels: 16
+      resolution: 128
       in_channels: 3
       out_ch: 3
-      ch: 128
-      ch_mult: [ 1,1,2,2,4,4]  # num_down = len(ch_mult)-1
-      num_res_blocks: 2
-      attn_resolutions: [16,8]
+      ch: 64
+      ch_mult: [1,2,4]  # num_down = len(ch_mult)-1
+      num_res_blocks: 1
+      attn_resolutions: [16]
       dropout: 0.0
 
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 12
+    batch_size: 4
     wrap: True
+    num_workers: 0
     train:
       target: taming.data.imagenet.ImagePaths
       params:
-        paths: "C:/Users/seali/calpoly/images"
+        paths: filelist.txt
         size: 256
         random_crop: True
     validation:
       target: taming.data.imagenet.ImagePaths
       params:
-        paths: "C:/Users/seali/calpoly/images"
+        paths: filelist.txt
         size: 256
         random_crop: True
 
