@@ -22,6 +22,10 @@ class ConcatDatasetWithIndex(ConcatDataset):
 
 class ImagePaths(Dataset):
     def __init__(self, paths, size=None, random_crop=False, labels=None):
+        if isinstance(paths, str) and paths.endswith(".txt"):
+            with open(paths, "r") as f:
+                paths = [line.strip() for line in f if line.strip()]
+
         self.size = size
         self.random_crop = random_crop
 

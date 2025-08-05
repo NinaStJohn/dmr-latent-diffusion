@@ -32,13 +32,13 @@ data:
     train:
       target: taming.data.imagenet.ImagePaths
       params:
-        paths: filelist.txt
+        paths: "C:/Users/seali/calpoly/internship/images_cond/filelist-clean.txt"
         size: 256
         random_crop: True
     validation:
       target: taming.data.imagenet.ImagePaths
       params:
-        paths: filelist.txt
+        paths: "C:/Users/seali/calpoly/internship/images_cond/filelist-clean.txt"
         size: 256
         random_crop: True
 
