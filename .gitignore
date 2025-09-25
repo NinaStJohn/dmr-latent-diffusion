@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Environments
+.env
+.venv/
+venv/
+*.egg-info/
+*.egg
+
+# Data / Outputs
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.tif
+*.tiff
+*.bmp
+samples*/
+outputs*/
+logs*/
+sout*/
+soutgen*/
+*.csv
+
+# Testing
+utility*/
+
+# Checkpoints
+*.ckpt
+*.pt
+*.pth
+
+# System
+.DS_Store
+Thumbs.db

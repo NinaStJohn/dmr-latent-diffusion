@@ -1,0 +1,80 @@
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 32
+    num_workers: 8
+    train:
+      target: path.to.MyClassDataset
+      params:
+        root: /path/to/train
+        transform:
+          target: torchvision.transforms.Compose
+          params:
+            transforms:
+              - target: torchvision.transforms.Resize
+                params: {size: 256}
+              - target: torchvision.transforms.CenterCrop
+                params: {size: 256}
+              - target: torchvision.transforms.ToTensor
+              - target: torchvision.transforms.Normalize
+                params:
+                  mean: [0.5, 0.5, 0.5]
+                  std: [0.5, 0.5, 0.5]
+    validation:
+      target: path.to.MyClassDataset
+      params:
+        root: /path/to/val
+        transform:
+          target: torchvision.transforms.Compose
+          params:
+            transforms:
+              - target: torchvision.transforms.Resize
+                params: {size: 256}
+              - target: torchvision.transforms.CenterCrop
+                params: {size: 256}
+              - target: torchvision.transforms.ToTensor
+              - target: torchvision.transforms.Normalize
+                params:
+                  mean: [0.5, 0.5, 0.5]
+                  std: [0.5, 0.5, 0.5]
+
+
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 12
+    wrap: True
+    train:
+      target: ldm.data.cnt_imagenet.CNTManifest
+      params:
+        manifest: /u/nstjohn/cnt_imagenet/manifest_train.jsonl
+        size: 256
+        random_crop: True
+        return_meta: False
+        class_key: class_id
+        porosity_key: porosity
+    validation:
+      target: ldm.data.cnt_imagenet.CNTManifest
+      params:
+        manifest: /u/nstjohn/cnt_imagenet/manifest_val.jsonl
+        size: 256
+        random_crop: False
+        return_meta: False
+        class_key: class_id
+        porosity_key: porosity
+
+lightning:
+  callbacks:
+    image_logger:
+      target: main.ImageLogger
+      params:
+        batch_frequency: 1000
+        max_images: 8
+        increase_log_steps: True
+
+  trainer:
+    benchmark: True
+    accumulate_grad_batches: 2   # 3 * 4 GPUs * 8 = 96 eff. batch
+    gpu: "0"                   # keep legacy PL per-rank setting as string
+    # distributed_backend: ddp
+    precision: 16
