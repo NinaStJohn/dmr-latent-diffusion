@@ -55,3 +55,6 @@ srun python -u main.py \
   --base /u/nstjohn/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
   -t \
   # -r /u/nstjohn/dmr-latent-diffusion/logs/2025-09-15T23-14-39_dmr-ACCESS/checkpoints/last.ckpt
+
+
+# output /work/hdd/bdxf/nstjohn
