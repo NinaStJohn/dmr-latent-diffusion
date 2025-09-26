@@ -665,13 +665,21 @@ class LatentDiffusion(DDPM):
                 cond_key = self.cond_stage_key
             if cond_key != self.first_stage_key:
                 if cond_key in ['caption', 'coordinates_bbox']:
-                    xc = batch[cond_key]
-                elif cond_key == 'class_label':
-                    xc = batch
+                    xc = batch[cond_key]  # stays as-is (not a tensor)
+                elif cond_key in ['class_id', 'class_label']:
+                    # >>> pass a DICT so ClassEmbedder can do batch[key][:, None]
+                    xc = {cond_key: batch[cond_key]}
                 else:
-                    xc = super().get_input(batch, cond_key).to(self.device)
+                    # only use image path if cond looks image-like
+                    cand = batch[cond_key]
+                    if hasattr(cand, "ndim") and cand.ndim >= 3:
+                        xc = super().get_input(batch, cond_key).to(self.device)
+                    else:
+                        # hand a small dict to keep the "dict" code path
+                        xc = {cond_key: cand}
             else:
                 xc = x
+
             if not self.cond_stage_trainable or force_c_encode:
                 if isinstance(xc, dict) or isinstance(xc, list):
                     # import pudb; pudb.set_trace()
@@ -1027,7 +1035,7 @@ class LatentDiffusion(DDPM):
         loss_simple = self.get_loss(model_output, target, mean=False).mean([1, 2, 3])
         loss_dict.update({f'{prefix}/loss_simple': loss_simple.mean()})
 
-        logvar_t = self.logvar[t].to(self.device)
+        logvar_t = self.logvar.to(t.device)[t]
         loss = loss_simple / torch.exp(logvar_t) + logvar_t
         # loss = loss_simple / torch.exp(self.logvar) + self.logvar
         if self.learn_logvar:
@@ -1253,6 +1261,40 @@ class LatentDiffusion(DDPM):
                    plot_diffusion_rows=True, **kwargs):
 
         use_ddim = ddim_steps is not None
+
+        # -------------------------------
+        # NEW: per-class sampling branch
+        # -------------------------------
+        # if force_class_id is not None:
+        #     device = self.device
+        #     num = int(n_samples or 4)
+
+        #     # Build conditioning 'c' for the requested class
+        #     try:
+        #         # Case A: class label tensor -> get_learned_conditioning()
+        #         labels = torch.full((num,), int(force_class_id), device=device, dtype=torch.long)
+        #         c = self.get_learned_conditioning(labels)
+        #     except Exception:
+        #         # Case B: dict-style conditioning (add other keys as needed)
+        #         c = {"class_id": torch.full((num,), int(force_class_id), device=device, dtype=torch.long)}
+        #         if porosity_for_log is not None:
+        #             c["porosity_frac"] = torch.full((num,), float(porosity_for_log), device=device)
+
+        #     # Sample from the model
+        #     try:
+        #         samples, _ = self.sample_log(cond=c, batch_size=num, ddim=use_ddim,
+        #                                     ddim_steps=ddim_steps, eta=ddim_eta, generator=generator)
+        #     except TypeError:
+        #         # some repos don't accept 'generator'
+        #         samples, _ = self.sample_log(cond=c, batch_size=num, ddim=use_ddim,
+        #                                     ddim_steps=ddim_steps, eta=ddim_eta)
+
+        #     x_samples = self.decode_first_stage(samples)
+        #     x_samples = torch.clamp(x_samples, -1., 1.)
+        #     return {"samples": x_samples}
+        # -------------------------------
+        # END new branch; original flow continues below
+        # -------------------------------
 
         log = dict()
         z, c, x, xrec, xc = self.get_input(batch, self.first_stage_key,
