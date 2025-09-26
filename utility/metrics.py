@@ -1,4 +1,7 @@
 import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # allow duplicate OpenMP (not ideal)
+os.environ["OMP_NUM_THREADS"] = "1"          # optional: avoid oversubscription
+
 import argparse
 import numpy as np
 from PIL import Image
