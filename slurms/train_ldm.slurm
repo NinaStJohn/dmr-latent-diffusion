@@ -52,9 +52,9 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 #   -t $RESUME
 
 srun python -u main2.py \
-  --base /u/nstjohn/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
+  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
   -t \
-  # -r /u/nstjohn/dmr-latent-diffusion/logs/2025-09-15T23-14-39_dmr-ACCESS/checkpoints/last.ckpt
+  # -r /u/$USER/dmr-latent-diffusion/logs/2025-09-15T23-14-39_dmr-ACCESS/checkpoints/last.ckpt
 
 
-# output /work/hdd/bdxf/nstjohn
+# output /work/hdd/bdxf/$USER
