@@ -36,12 +36,14 @@ model:
         in_channels: 8              # = AE z_channels
         out_channels: 8             # usually same as in_channels
         model_channels: 192         # OK start; use whatever you trained before
-        attention_resolutions: [8, 4, 2]  # changed from [ 4, 2, 1] to make larger image generation easier
+        # changed to [16,8,4] to advoid patchyness
+        attention_resolutions: [16,8,4]  # changed from [ 4, 2, 1] to make larger image generation easier
         num_res_blocks: 2
         channel_mult: [1, 2, 4, 4]
         use_scale_shift_norm: true
         resblock_updown: true
         use_new_attention_order: false
+        use_checkpoint: true # help the VRAM
 
         # addidtions to make the UNET see conditional
         use_spatial_transformer: true
@@ -74,7 +76,7 @@ model:
     cond_stage_config:
       target: ldm.modules.encoders.modules.ClassEmbedder
       params:
-        n_classes: 7
+        n_classes: 
         embed_dim: 128
         key: class_id
     conditioning_key: crossattn
@@ -83,25 +85,27 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 12
+    batch_size: 6
     num_workers: 6          # add this
     wrap: true
     train:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
         manifest: /u/nstjohn/cnt_imagenet/train_manifest.jsonl
-        size: 256
-        random_crop: true
+        size: [ 512 , 768 ]
+        random_crop: false
         return_meta: false
+        resize_mode: keep_aspect
         class_key: class_id
         porosity_key: porosity
     validation:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
         manifest: /u/nstjohn/cnt_imagenet/val_manifest.jsonl
-        size: 256
+        size: [ 512 , 768 ]
         random_crop: false # don't crop the validation
         return_meta: false
+        resize_mode:  keep_aspect
         class_key: class_id
         porosity_key: porosity
 
@@ -123,7 +127,7 @@ lightning:
 
   trainer:
     gpus: 1
-    precision: 32
+    precision: 16
     benchmark: true
-    accumulate_grad_batches: 2
+    accumulate_grad_batches: 4
 
