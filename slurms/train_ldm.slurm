@@ -54,6 +54,7 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 srun python -u main2.py \
   --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
   -t \
+  --logdir /work/hdd/bdxf/$USER/ldmlog
   # -r /u/$USER/dmr-latent-diffusion/logs/2025-09-15T23-14-39_dmr-ACCESS/checkpoints/last.ckpt
 
 
