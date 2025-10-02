@@ -20,9 +20,9 @@ REPEATS=10                                  # repeats per class
 N_PER=5
 H=256
 W=256
-STEPS=75
+STEPS=100
 ETA=0.0
-SCALE=3                               # no CFG (avoids black boxes if no CF dropout)
+SCALE=2.0
 
 CONFIG=/u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml
 CKPT=/u/$USER/dmr-latent-diffusion/logs/2025-09-25T23-39-04_dmr-ACCESS/checkpoints/last.ckpt
