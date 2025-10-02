@@ -4,11 +4,12 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 class CNTManifest(Dataset):
-    def __init__(self, manifest, size=256, random_crop=True,
+    def __init__(self, manifest, size, random_crop=false,
+                 resize_mode="keep_aspect", # "keep_aspect" | "letterbox" | "square_crop" 
                  return_meta=False, class_key="class_id", porosity_key="porosity"):
         self._bad_files = set()
         self.manifest = manifest
-        self.size = size
+        self.w, self.h = size if isinstance(size, (list, tuple)) else (size, size)
         self.random_crop = random_crop
         self.return_meta = return_meta
         self.class_key = class_key
@@ -30,22 +31,40 @@ class CNTManifest(Dataset):
     def __len__(self):
         return len(self.records)
 
+    # allows for multiple aspect ratios & resizing
     def _load_resize_crop(self, path):
         img = Image.open(path).convert("RGB")
-        w, h = img.size
-        side = min(w, h)
-        if self.random_crop:
-            x0 = 0 if w == side else random.randint(0, w - side)
-            y0 = 0 if h == side else random.randint(0, h - side)
-        else:
-            x0 = (w - side) // 2
-            y0 = (h - side) // 2
-        img = img.crop((x0, y0, x0 + side, y0 + side))
-        img = img.resize((self.size, self.size), Image.BICUBIC)
+        tw, th = self.w, self.h
 
-        arr = np.asarray(img, dtype=np.float32)     # H, W, C
-        arr = (arr / 127.5) - 1.0                   # [-1, 1]
-        return arr                                   # keep HWC
+        if self.resize_mode == "keep_aspect":
+            # direct 3:2 → 3:2 scaling (no crop, no pad)
+            img = img.resize((tw, th), Image.LANCZOS)
+
+        elif self.resize_mode == "letterbox":
+            # preserve content; pad to (tw, th) without cropping
+            iw, ih = img.size
+            scale = min(tw / iw, th / ih)
+            nw, nh = int(round(iw * scale)), int(round(ih * scale))
+            img = img.resize((nw, nh), Image.LANCZOS)
+            pad_w, pad_h = tw - nw, th - nh
+            img = ImageOps.expand(img,
+                                  border=(pad_w // 2, pad_h // 2, pad_w - pad_w // 2, pad_h - pad_h // 2),
+                                  fill=0)
+
+        else:  # "square_crop" (legacy behavior)
+            side = min(img.width, img.height)
+            if self.random_crop:
+                x0 = 0 if img.width == side else random.randint(0, img.width - side)
+                y0 = 0 if img.height == side else random.randint(0, img.height - side)
+            else:
+                x0 = (img.width - side) // 2
+                y0 = (img.height - side) // 2
+            img = img.crop((x0, y0, x0 + side, y0 + side))
+            img = img.resize((tw, th), Image.LANCZOS)
+
+        arr = np.asarray(img, dtype=np.float32)
+        arr = (arr / 127.5) - 1.0
+        return arr
 
 
     def __getitem__(self, idx):
