@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ldm11_aspectratiom2
+#SBATCH --job-name=ldm13_aspectratiom2
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
