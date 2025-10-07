@@ -43,7 +43,6 @@ model:
         use_scale_shift_norm: true
         resblock_updown: true
         use_new_attention_order: false
-        use_checkpoint: true # help the VRAM
 
         # addidtions to make the UNET see conditional
         use_spatial_transformer: true
@@ -76,7 +75,7 @@ model:
     cond_stage_config:
       target: ldm.modules.encoders.modules.ClassEmbedder
       params:
-        n_classes: 
+        n_classes: 6
         embed_dim: 128
         key: class_id
     conditioning_key: crossattn
@@ -92,7 +91,7 @@ data:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
         manifest: /u/nstjohn/cnt_imagenet/train_manifest.jsonl
-        size: [ 512 , 768 ]
+        size: [ 384 , 576 ]
         random_crop: false
         return_meta: false
         resize_mode: keep_aspect
@@ -102,7 +101,7 @@ data:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
         manifest: /u/nstjohn/cnt_imagenet/val_manifest.jsonl
-        size: [ 512 , 768 ]
+        size: [ 384 , 576 ]
         random_crop: false # don't crop the validation
         return_meta: false
         resize_mode:  keep_aspect
@@ -127,7 +126,7 @@ lightning:
 
   trainer:
     gpus: 1
-    precision: 16
+    precision: 32
     benchmark: true
     accumulate_grad_batches: 4
 
