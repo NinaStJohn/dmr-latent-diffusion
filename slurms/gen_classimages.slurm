@@ -16,17 +16,20 @@ set -euo pipefail
 
 # ---- user knobs ----
 NUM_CLASSES=6                               # classes 0..5
-REPEATS=10                                  # repeats per class
-N_PER=5
-H=256
-W=256
+REPEATS=2                                  # repeats per class
+N_PER=1
+H=384
+W=576
 STEPS=100
 ETA=0.0
 SCALE=2.0
 
 CONFIG=/u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml
-CKPT=/u/$USER/dmr-latent-diffusion/logs/2025-09-25T23-39-04_dmr-ACCESS/checkpoints/last.ckpt
-OUTROOT=/u/$USER/dmr-latent-diffusion/sample_cond_256
+# 256 squares
+# CKPT=/u/$USER/dmr-latent-diffusion/logs/2025-09-25T23-39-04_dmr-ACCESS/checkpoints/last.ckpt
+CKPT=/work/hdd/bdxf/$USER/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt
+OUTROOT=/u/$USER/dmr-latent-diffusion/sample_cond_384x576
+
 
 mkdir -p soutgen "$OUTROOT"
 

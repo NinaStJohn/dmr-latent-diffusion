@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ldm15_ee
+#SBATCH --job-name=ldm15_resume_ee
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -51,18 +51,18 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 #   --base "$CONFIG" \
 #   -t $RESUME
 
-srun python -u main2.py \
-  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
-  -t \
-  --logdir /work/hdd/bdxf/$USER/ldmlog \
-  --max_epochs=-1
-
-
 # srun python -u main2.py \
+#   --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
 #   -t \
 #   --logdir /work/hdd/bdxf/$USER/ldmlog \
-#   --base /work/hdd/bdxf/nstjohn/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/configs/2025-10-13T22-16-51-project.yaml \
-#   -r /work/hdd/bdxf/$USER/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt \
 #   --max_epochs=-1
+
+
+srun python -u main3.py \
+  -t \
+  --logdir /work/hdd/bdxf/$USER/ldmlog \
+  --base /work/hdd/bdxf/nstjohn/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/configs/2025-10-13T22-16-51-project.yaml \
+  -r /work/hdd/bdxf/$USER/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt \
+  --max_epochs=-1
 
 # output /work/hdd/bdxf/$USER
