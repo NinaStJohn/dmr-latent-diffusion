@@ -311,12 +311,11 @@ class ImageLogger(Callback):
                  log_images_kwargs=None, extra=None):
         super().__init__()
         self.rescale = rescale
-        self.batch_freq = batch_frequency
-        self.max_images = max_images
+        self.batch_freq = int(batch_frequency)
+        self.max_images = int(max_images)
         self.logger_log_images = { pl.loggers.TensorBoardLogger: self._tensorboard }
         if hasattr(pl.loggers, "TestTubeLogger"):
-            self.logger_log_images[pl.loggers.TestTubeLogger] = self._tensorboard  # or self._testtube if you have it
-
+            self.logger_log_images[pl.loggers.TestTubeLogger] = self._tensorboard
         try:
             self.logger_log_images[pl.loggers.WandbLogger] = self._wandb
         except Exception:
@@ -331,24 +330,98 @@ class ImageLogger(Callback):
         self.log_images_kwargs = log_images_kwargs if log_images_kwargs else {}
         self.log_first_step = log_first_step
 
-        # ---- FIX: default 'extra' and read optional knobs once ----
+        # extra knobs
         extra = extra or {}
         self.sample_classes = extra.get("sample_classes", None)   # e.g., [0,1,2,3,4,5]
         self.n_per_class    = int(extra.get("n_per_class", 4))
         self.fixed_seed     = extra.get("fixed_seed", None)
 
+    # ------------------------
+    # Lightning hook helpers
+    # ------------------------
+    def _should_log(self, trainer, batch_idx) -> bool:
+        if self.disabled:
+            return False
+        # skip the very first step unless explicitly allowed
+        if trainer.global_step == 0 and not self.log_first_step:
+            return False
+        ref = batch_idx if self.log_on_batch_idx else trainer.global_step
+        return (ref in self.log_steps) or (ref % self.batch_freq == 0)
 
-    @rank_zero_only
-    def _testtube(self, pl_module, images, batch_idx, split):
-        for k in images:
-            grid = torchvision.utils.make_grid(images[k])
-            grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
+    def _maybe_seed(self):
+        if self.fixed_seed is not None:
+            g = torch.random.fork_rng()
+            torch.manual_seed(int(self.fixed_seed))
+            return g
+        return None
 
-            tag = f"{split}/{k}"
-            pl_module.logger.experiment.add_image(
-                tag, grid,
-                global_step=pl_module.global_step)
-            
+    def _collect_images(self, pl_module, batch):
+        # try model.log_images(batch, **kwargs); fall back to dict {}
+        try:
+            kwargs = dict(self.log_images_kwargs)
+            # if your model supports class-conditional sampling, pass hints:
+            if self.sample_classes is not None:
+                kwargs.setdefault("sample_classes", self.sample_classes)
+                kwargs.setdefault("n_per_class", self.n_per_class)
+            ctx = self._maybe_seed()
+            images = pl_module.log_images(batch, **kwargs) or {}
+            if ctx is not None:
+                ctx.__exit__(None, None, None)
+        except Exception:
+            images = {}
+
+        # post-process: clamp & truncate
+        out = {}
+        for k, v in images.items():
+            if isinstance(v, torch.Tensor):
+                x = v[: self.max_images]
+                if self.clamp:
+                    x = torch.clamp(x, -1.0, 1.0)
+                out[k] = x.detach().cpu()
+        return out
+
+    def _route_to_logger(self, trainer, pl_module, images, batch_idx, split: str):
+        logger = trainer.logger
+        # local PNGs
+        save_dir = getattr(logger, "save_dir", None) or trainer.default_root_dir
+        self.log_local(save_dir, split, images, pl_module.global_step, trainer.current_epoch, batch_idx)
+
+        # TB / TestTube / W&B
+        for logger_cls, fn in self.logger_log_images.items():
+            if isinstance(logger, logger_cls):
+                fn(pl_module, images, batch_idx, split)
+
+    # ------------------------
+    # Required hook signatures
+    # ------------------------
+    def _extract_dl_idx(args, kwargs, default=0):
+        if "dataloader_idx" in kwargs:
+            return kwargs["dataloader_idx"]
+        # PL 1.x often passes it positionally (right after batch_idx)
+        if len(args) >= 1 and isinstance(args[0], int):
+            return args[0]
+        return default
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, *args, **kwargs):
+        dataloader_idx = _extract_dl_idx(args, kwargs, default=0)
+        if not self._should_log(trainer, batch_idx):
+            return
+        images = self._collect_images(pl_module, batch)
+        if images:
+            self._route_to_logger(trainer, pl_module, images, batch_idx, split="train")
+
+    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, *args, **kwargs):
+        dataloader_idx = _extract_dl_idx(args, kwargs, default=0)
+        if not self._should_log(trainer, batch_idx):
+            return
+        images = self._collect_images(pl_module, batch)
+        if images:
+            self._route_to_logger(trainer, pl_module, images, batch_idx, split="val")
+
+
+    # ------------------------
+    # Backends & local saving
+    # ------------------------
     @rank_zero_only
     def _tensorboard(self, pl_module, images, batch_idx, split):
         for k, img in images.items():
@@ -364,25 +437,18 @@ class ImageLogger(Callback):
             grid = (grid + 1.0) / 2.0
             pl_module.logger.experiment.log({f"{split}/{k}": [wandb.Image(grid, caption=f"gs={pl_module.global_step}")]})
 
-
     @rank_zero_only
-    def log_local(self, save_dir, split, images,
-                  global_step, current_epoch, batch_idx):
+    def log_local(self, save_dir, split, images, global_step, current_epoch, batch_idx):
         root = os.path.join(save_dir, "images", split)
-        for k in images:
-            grid = torchvision.utils.make_grid(images[k], nrow=4)
+        for k, v in images.items():
+            grid = torchvision.utils.make_grid(v, nrow=4)
             if self.rescale:
-                grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
-            grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1)
-            grid = grid.numpy()
+                grid = (grid + 1.0) / 2.0
+            grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1).numpy()
             grid = (grid * 255).astype(np.uint8)
-            filename = "{}_gs-{:06}_e-{:06}_b-{:06}.png".format(
-                k,
-                global_step,
-                current_epoch,
-                batch_idx)
+            filename = f"{k}_gs-{global_step:06}_e-{current_epoch:06}_b-{batch_idx:06}.png"
             path = os.path.join(root, filename)
-            os.makedirs(os.path.split(path)[0], exist_ok=True)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             Image.fromarray(grid).save(path)
 
 def log_img(self, pl_module, batch, batch_idx, split="train"):
@@ -501,16 +567,16 @@ def log_img(self, pl_module, batch, batch_idx, split="train"):
             return True
         return False
 
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
-        if not self.disabled and (pl_module.global_step > 0 or self.log_first_step):
-            self.log_img(pl_module, batch, batch_idx, split="train")
+    # def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx: int = 0):
+    #     if not self.disabled and (pl_module.global_step > 0 or self.log_first_step):
+    #         self.log_img(pl_module, batch, batch_idx, split="train")
 
-    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
-        if not self.disabled and pl_module.global_step > 0:
-            self.log_img(pl_module, batch, batch_idx, split="val")
-        if hasattr(pl_module, 'calibrate_grad_norm'):
-            if (pl_module.calibrate_grad_norm and batch_idx % 25 == 0) and batch_idx > 0:
-                self.log_gradients(trainer, pl_module, batch_idx=batch_idx)
+    # def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx: int = 0):
+    #     if not self.disabled and pl_module.global_step > 0:
+    #         self.log_img(pl_module, batch, batch_idx, split="val")
+    #     if hasattr(pl_module, 'calibrate_grad_norm'):
+    #         if (pl_module.calibrate_grad_norm and batch_idx % 25 == 0) and batch_idx > 0:
+    #             self.log_gradients(trainer, pl_module, batch_idx=batch_idx)
 
 
 class CUDACallback(Callback):
