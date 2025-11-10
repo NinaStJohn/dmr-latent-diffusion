@@ -102,11 +102,15 @@ def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder
     ax.plot(distance_range, train_mean_prob, 'b-', label='Mean_' + first_label)
     ax.plot(distance_range, test_mean_prob, 'r-', label='Mean_' + second_label)
 
-    ax.set_xlabel("distance")
-    ax.set_ylabel("probability")
-    ax.legend()
-    fig.suptitle(metric_name)
+    # change y axis to log
+    ax.set_yscale("log")
+
+    # ax.set_xlabel("distance")
+    # ax.set_ylabel("probability")
+    # ax.legend()
+    # fig.suptitle(metric_name)
     fig.savefig(os.path.join(metrics_folder, f"{metric_name}.png"))
+    
 
 def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2):
     print("Plotting", metric_name)
@@ -156,6 +160,10 @@ def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2):
 
     for a in ax:
         a.legend()
+
+    if "Chord" or "Two" in metric_name :
+        for a in ax:
+            a.set_yscale("log")
 
     fig.suptitle(metric_name)
     fig.savefig(os.path.join(metrics_folder, f"{metric_name}.png"))
