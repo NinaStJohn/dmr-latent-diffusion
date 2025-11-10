@@ -34,3 +34,6 @@ soutgen*/
 # System
 .DS_Store
 Thumbs.db
+
+#pycase
+~/dmr-latent-diffusion/taming/modules/vqvae/__pycache__/*

@@ -36,7 +36,8 @@ model:
         in_channels: 8              # = AE z_channels
         out_channels: 8             # usually same as in_channels
         model_channels: 192         # OK start; use whatever you trained before
-        attention_resolutions: [8, 4, 2]  # changed from [ 4, 2, 1] to make larger image generation easier
+        # changed to [16,8,4] to advoid patchyness
+        attention_resolutions: [16,8,4]  # changed from [ 4, 2, 1] to make larger image generation easier
         num_res_blocks: 2
         channel_mult: [1, 2, 4, 4]
         use_scale_shift_norm: true
@@ -90,18 +91,20 @@ data:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
         manifest: /u/nstjohn/cnt_imagenet/train_manifest.jsonl
-        size: 256
-        random_crop: true
+        size: [ 384 , 576 ]
+        random_crop: false
         return_meta: false
+        resize_mode: keep_aspect
         class_key: class_id
         porosity_key: porosity
     validation:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
         manifest: /u/nstjohn/cnt_imagenet/val_manifest.jsonl
-        size: 256
+        size: [ 384 , 576 ]
         random_crop: false # don't crop the validation
         return_meta: false
+        resize_mode:  keep_aspect
         class_key: class_id
         porosity_key: porosity
 
@@ -125,5 +128,5 @@ lightning:
     gpus: 1
     precision: 32
     benchmark: true
-    accumulate_grad_batches: 2
+    accumulate_grad_batches: 6
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ldm15_ee
+#SBATCH --job-name=ldm14.5_e&e
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -15,7 +15,7 @@ set -euo pipefail
 mkdir -p sout
 
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
-conda activate ldm-pl
+conda activate ldm310
 cd /u/$USER/dmr-latent-diffusion
 
 echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
@@ -51,18 +51,12 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 #   --base "$CONFIG" \
 #   -t $RESUME
 
-srun python -u main2.py \
-  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
+srun python -u main3.py \
+  --base /work/hdd/bdxf/nstjohn/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/configs/2025-10-13T22-16-51-project.yaml \
   -t \
   --logdir /work/hdd/bdxf/$USER/ldmlog \
-  --max_epochs=10000000
+  -r /work/hdd/bdxf/$USER/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt \
+  callbacks.image_logger=null
 
-
-# srun python -u main2.py \
-#   -t \
-#   --logdir /work/hdd/bdxf/$USER/ldmlog \
-#   --base /work/hdd/bdxf/nstjohn/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/configs/2025-10-13T22-16-51-project.yaml \
-#   -r /work/hdd/bdxf/$USER/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt \
-#   --max_epochs=-1
 
 # output /work/hdd/bdxf/$USER
