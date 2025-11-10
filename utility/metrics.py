@@ -18,6 +18,7 @@ import two_point_correlation
 import chord_length_distribution
 import lineal_path_distribution
 import pore_size_distribution
+import skimage
 
 def load_images(folder, mode):
     images = []
@@ -202,42 +203,49 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
         if train_folder:
             print("Beginning metric calculations for training images")
             for i, im in enumerate(train_images):
-                print("train: {}/{}".format(i + 1, len(train_images)))
+                print(f"train: {i + 1}/{len(train_images)}")
                 np_array = np.array(im.convert('L'))
+                thresh = skimage.filters.threshold_otsu(np_array)
+
                 metrics["pore_size_distribution"]['train'].append(ps.metrics.pore_size_distribution(np_array))
                 metrics["lineal_path_distribution"]['train'].append(ps.metrics.lineal_path_distribution(np_array))
-                np_array = (np_array > 0.65*255).astype(np.uint8) * 255
+
+                np_array = (np_array > thresh).astype(np.uint8) * 255
                 metrics["two_point_correlation"]['train'].append(two_point_correlation.two_point_correlation(np_array))
                 metrics["chord_length_distribution"]['train'].append(ps.metrics.chord_length_distribution(np_array))
 
-
             print("Beginning metric calculations for test images")
             for i, im in enumerate(test_images):
-                print("test: {}/{}".format(i + 1, len(test_images)))
+                print(f"test: {i + 1}/{len(test_images)}")
                 np_array = np.array(im.convert('L'))
+                thresh = skimage.filters.threshold_otsu(np_array)
+
+                # moving line to make things work - good lord 
                 metrics["pore_size_distribution"]['test'].append(ps.metrics.pore_size_distribution(np_array))
-                
-                np_array = (np_array > 0.65*255).astype(np.uint8) * 255
-                
                 metrics["lineal_path_distribution"]['test'].append(ps.metrics.lineal_path_distribution(np_array))
+
+                np_array = (np_array > thresh).astype(np.uint8) * 255
                 metrics["two_point_correlation"]['test'].append(two_point_correlation.two_point_correlation(np_array))
                 metrics["chord_length_distribution"]['test'].append(ps.metrics.chord_length_distribution(np_array))
+
         else:
             print("Beginning metric calculations for original image")
             im = Image.open(org_image)
             np_array = np.array(im.convert('L'))
-            np_array = (np_array > 0.65*255).astype(np.uint8)
+            thresh = skimage.filters.threshold_otsu(np_array)
+
+            np_array = (np_array > thresh).astype(np.uint8)
             metrics["pore_size_distribution"]['train'].append(pore_size_distribution.pore_size_distribution(np_array))
             metrics["lineal_path_distribution"]['train'].append(lineal_path_distribution.lineal_path_distribution(np_array))
-            # np.savetxt('output.txt', np_array, fmt='%d', delimiter=' ')
             metrics["two_point_correlation"]['train'].append(two_point_correlation.two_point_correlation(np_array))
             metrics["chord_length_distribution"]['train'].append(chord_length_distribution.chord_length_distribution(np_array))
-
 
             print("Beginning metric calculations for reconstructed image")
             im = Image.open(rec_image)
             np_array = np.array(im.convert('L'))
-            np_array = (np_array > 0.65*255).astype(np.uint8)  
+            thresh = skimage.filters.threshold_otsu(np_array)
+
+            np_array = (np_array > thresh).astype(np.uint8)
             metrics["pore_size_distribution"]['test'].append(pore_size_distribution.pore_size_distribution(np_array))
             metrics["lineal_path_distribution"]['test'].append(lineal_path_distribution.lineal_path_distribution(np_array))
             metrics["two_point_correlation"]['test'].append(two_point_correlation.two_point_correlation(np_array))
