@@ -51,12 +51,12 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 #   --base "$CONFIG" \
 #   -t $RESUME
 
-srun python -u main2.py \
+srun python -u main3.py \
   --base /work/hdd/bdxf/nstjohn/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/configs/2025-10-13T22-16-51-project.yaml \
   -t \
   --logdir /work/hdd/bdxf/$USER/ldmlog \
   -r /work/hdd/bdxf/$USER/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt \
-  lightning.callbacks.image_logger.target=main2.ImageLogger
+  callbacks.image_logger=null
 
 
 # output /work/hdd/bdxf/$USER
