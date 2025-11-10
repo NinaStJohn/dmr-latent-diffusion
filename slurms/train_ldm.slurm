@@ -15,7 +15,7 @@ set -euo pipefail
 mkdir -p sout
 
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
-conda activate ldm310
+conda activate ldm-pl
 cd /u/$USER/dmr-latent-diffusion
 
 echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
@@ -55,7 +55,7 @@ srun python -u main2.py \
   --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
   -t \
   --logdir /work/hdd/bdxf/$USER/ldmlog \
-  --max_epochs=-1
+  --max_epochs=10000000
 
 
 # srun python -u main2.py \
