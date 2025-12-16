@@ -97,7 +97,7 @@ data:
         random_flip: true
         resize_mode: keep_aspect
         class_key: class_id
-        porosity_key: porosity
+        porosity_key: porosity_frac
     validation:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
@@ -107,7 +107,7 @@ data:
         return_meta: false
         resize_mode:  keep_aspect
         class_key: class_id
-        porosity_key: porosity
+        porosity_key: porosity_frac
 
 
 
