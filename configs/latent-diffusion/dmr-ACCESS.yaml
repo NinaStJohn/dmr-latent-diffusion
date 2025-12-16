@@ -94,6 +94,7 @@ data:
         size: [ 384 , 576 ]
         random_crop: false
         return_meta: false
+        random_flip: true
         resize_mode: keep_aspect
         class_key: class_id
         porosity_key: porosity

@@ -10,6 +10,7 @@ class CNTManifest(Dataset):
                  random_crop=False,
                  edge_prob=0.35,               # <— new: chance a crop touches an edge
                  resize_mode="keep_aspect",
+                 random_flip=False,
                  hflip_prob=0.5,               # adding in random h/v flips
                  vflip_prob=0.5,
                  return_meta=False, class_key="class_id", porosity_key="porosity"):
