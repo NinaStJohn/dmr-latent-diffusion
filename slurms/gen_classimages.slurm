@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ldm-gen_cond_final
+#SBATCH --job-name=ldm-trained0
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -22,17 +22,17 @@ H=384
 W=576
 STEPS=250
 ETA=0.0                                   # defined but not used unless your script supports --eta
-SCALE=2.0
+SCALE=1.5
 
-CONFIG="/work/hdd/bdxf/$USER/ldmlog/2025-10-23T17-18-37_dmr-ACCESS/configs/2025-10-23T17-18-37-project.yaml"
-CKPT="/work/hdd/bdxf/$USER/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt"
-OUTROOT="/work/hdd/bdxf/$USER/newgen"
+CONFIG="/work/hdd/bdxf/nstjohn/ldmlog/multi/2025-12-09T23-31-35_dmr-ACCESS/configs/2025-12-09T23-31-35-project.yaml"
+CKPT="/work/hdd/bdxf/nstjohn/ldmlog/multi/2025-12-09T23-31-35_dmr-ACCESS/checkpoints/epoch=000045.ckpt"
+OUTROOT="/work/hdd/bdxf/$USER/trainedon0"
 
 mkdir -p "soutgen" "$OUTROOT"
 
 # ---- env ----
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
-conda activate ldm-pl
+conda activate ldmgen
 cd "/u/$USER/dmr-latent-diffusion"
 
 echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}"

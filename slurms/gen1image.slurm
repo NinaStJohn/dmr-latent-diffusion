@@ -8,6 +8,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=120G
 #SBATCH --time=1-00:00:00
+#SBATCH --array=0-119%6    
 #SBATCH -o soutgen/%x-%j.out
 #SBATCH -e soutgen/%x-%j.err
 
@@ -16,24 +17,28 @@ set -euo pipefail
 CONFIG=/u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml
 CKPT=/work/hdd/bdxf/$USER/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt
 # OUTROOT=/u/$USER/dmr-latent-diffusion/sample_cond_FINAL
-OUTROOT = /work/hdd/bdxf/$USER/ldmTEST
+OUTROOT="/work/hdd/bdxf/$USER/ldmclass0"
 
 mkdir -p soutgen "$OUTROOT"
 
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
-conda activate ldm-pl
+conda activate ldmgen
 cd /u/$USER/dmr-latent-diffusion
 
 nvidia-smi || true
 
+IDX=${SLURM_ARRAY_TASK_ID}
+BASE_SEED=23
+SEED=$(( BASE_SEED + IDX ))
+
 python /u/$USER/dmr-latent-diffusion/scripts/class2imgDMR.py \
-  --config /work/hdd/bdxf/nstjohn/ldmlog/2025-10-23T17-18-37_dmr-ACCESS/configs/2025-10-23T17-18-37-project.yaml \
-  --ckpt   /work/hdd/bdxf/nstjohn/ldmlog/2025-10-13T22-16-51_dmr-ACCESS/checkpoints/last.ckpt \
+  --config /work/hdd/bdxf/nstjohn/ldmlog/multi/2025-12-09T23-31-35_dmr-ACCESS/configs/2025-12-09T23-31-35-project.yaml \
+  --ckpt   /work/hdd/bdxf/nstjohn/ldmlog/multi/2025-12-09T23-31-35_dmr-ACCESS/checkpoints/epoch=000045.ckpt \
   --class_id 0 \
   --n 1 \
-  --H 768 --W 1024 \
+  --H 384 --W 576 \
   --steps 250 \
-  --seed 23 \
+  --seed "$SEED" \
   --autocast \
-  --scale 3.0 \
-  --outdir /work/hdd/bdxf/$USER/ldmTEST
+  --scale 1.5 \
+  --outdir "$OUTROOT"
