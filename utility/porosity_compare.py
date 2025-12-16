@@ -18,6 +18,10 @@ from typing import List
 import numpy as np
 from PIL import Image
 import pandas as pd
+import os
+import matplotlib
+if os.environ.get("DISPLAY", "") == "":
+    matplotlib.use("Agg")  # headless-safe backend
 import matplotlib.pyplot as plt
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
@@ -70,36 +74,95 @@ def scan_folder(root: Path, split_name: str, threshold: float) -> pd.DataFrame:
         return pd.DataFrame(columns=["split","class","path","porosity"])
     return pd.DataFrame.from_records(records)
 
-def plot_by_class(df_avg: pd.DataFrame, out_png: Path) -> None:
-    """
-    df_avg columns: class, split, mean_porosity
-    Produces a single line plot (one line per split) of mean porosity vs. class.
-    X-axis spans all classes from 0 to 20 (numeric, no % sign).
-    """
-    # Remove trailing % if present and cast to int
-    df_avg = df_avg.copy()
-    df_avg["class"] = df_avg["class"].astype(str).str.rstrip("%")
+from typing import Optional
+import re
 
-    # Force classes 0–20 in numeric order
-    classes = [str(c) for c in range(0, 21)]
-    splits = list(df_avg["split"].unique())
+def _normalize_class_to_int(cls_str: str) -> Optional[int]:
+    """
+    Extract the first integer from a class-like string.
+    Examples:
+      'class_0'  -> 0
+      '0_0%'     -> 0
+      '12%'      -> 12
+      '7'        -> 7
+    Returns None if no integer is found.
+    """
+    m = re.search(r"\d+", str(cls_str))
+    return int(m.group(0)) if m else None
+
+
+def plot_by_class(df: pd.DataFrame, out_png: Path) -> None:
+    """
+    df columns: split, class, path, porosity
+
+    Produces, for each split:
+      - a line plot of median porosity vs. class
+      - a scatter of individual-image porosities per class (with slight jitter)
+    so you can see spread and potential outliers per class.
+    """
+    if df.empty:
+        print("[warn] No data to plot; df is empty.")
+        return
+
+    df = df.copy()
+    df["class_num"] = df["class"].apply(_normalize_class_to_int)
+
+    # Drop rows we couldn't parse
+    n_before = len(df)
+    df = df.dropna(subset=["class_num"])
+    if df.empty:
+        print("[warn] No plottable classes after normalization.")
+        return
+    if len(df) < n_before:
+        print(f"[info] Dropped {n_before - len(df)} rows with unparseable class labels.")
+
+    df["class_num"] = df["class_num"].astype(int)
+
+    classes = sorted(df["class_num"].unique().tolist())
+    splits = list(df["split"].unique())
+
+    # For reproducible jitter
+    rng = np.random.default_rng(0)
 
     plt.figure()
+
     for split in splits:
-        y = []
+        df_s = df[df["split"] == split]
+        if df_s.empty:
+            continue
+
+        # Median line per class
+        medians = (
+            df_s.groupby("class_num")["porosity"]
+                .median()
+        )
+        y = [medians.get(c, np.nan) for c in classes]
+
+        if np.all(np.isnan(y)):
+            continue
+
+        # Plot median line and remember its color
+        (line,) = plt.plot(classes, y, marker="o", label=f"{split} median")
+        color = line.get_color()
+
+        # Scatter per-image porosities with slight horizontal jitter
         for c in classes:
-            vals = df_avg[(df_avg["class"] == c) & (df_avg["split"] == split)]["mean_porosity"].values
-            y.append(vals[0] if len(vals) else np.nan)
-        plt.plot(classes, y, marker="o", label=split)
+            vals = df_s[df_s["class_num"] == c]["porosity"].values
+            if len(vals) == 0:
+                continue
+            jitter = rng.uniform(-0.15, 0.15, size=len(vals))
+            xs = c + jitter
+            plt.scatter(xs, vals, s=12, alpha=0.4, color=color, edgecolors="none")
 
     plt.xlabel("Class")
-    plt.ylabel("Average Porosity (%)")
-    plt.title("Average Porosity by Class")
-    plt.xticks(rotation=45)
+    plt.ylabel("Porosity (%)")
+    plt.title("Porosity by Class (Median + Per-Image Scatter)")
+    plt.xticks(classes, rotation=45)
     plt.legend()
     plt.tight_layout()
     plt.savefig(out_png, dpi=200)
     plt.close()
+
 
 
 
@@ -121,16 +184,24 @@ def main():
     per_image_csv = args.outdir / "porosity_per_image.csv"
     df.to_csv(per_image_csv, index=False)
 
-    # Compute per-class averages
-    df_avg = (df.groupby(["split","class"], as_index=False)["porosity"]
-                .mean()
-                .rename(columns={"porosity":"mean_porosity"}))
-    avg_csv = args.outdir / "porosity_by_class.csv"
-    df_avg.to_csv(avg_csv, index=False)
+    # Compute per-class stats (mean + median) in a pandas-version-safe way
+    grouped = df.groupby(["split", "class"])["porosity"]
 
-    # Plot
+    df_stats = (
+        grouped
+        .agg(["mean", "median"])
+        .reset_index()
+        .rename(columns={"mean": "mean_porosity", "median": "median_porosity"})
+    )
+
+    avg_csv = args.outdir / "porosity_by_class.csv"
+    df_stats.to_csv(avg_csv, index=False)
+
+    # Plot using per-image data so we can show spread + median per class
     plot_path = args.outdir / "porosity_by_class.png"
-    plot_by_class(df_avg, plot_path)
+    plot_by_class(df, plot_path)
+
+
 
     print(f"[ok] Wrote per-image CSV: {per_image_csv}")
     print(f"[ok] Wrote per-class CSV: {avg_csv}")
