@@ -82,6 +82,20 @@ def save_imgs(x, outdir, prefix):
 # -------------------------------
 # Conditioning helpers
 # -------------------------------
+# def make_class_conditioning(model, class_id: int, batch: int, device: torch.device):
+#     class_ids = torch.full((batch,), int(class_id), device=device, dtype=torch.long)
+
+#     batch_dict = {
+#         "class_id": class_ids,
+#         "porosity_frac": torch.zeros((batch,), device=device, dtype=torch.float32),
+#     }
+
+#     cond_embed = model.get_learned_conditioning(batch_dict)
+
+#     if getattr(model, "conditioning_key", None) == "crossattn":
+#         return {"c_crossattn": cond_embed}
+#     return cond_embed
+
 def make_class_conditioning(model, class_id: int, batch: int, device: torch.device):
     """
     Builds class-label conditioning compatible with cross-attention pipelines.
