@@ -175,7 +175,7 @@ class CNTManifest(Dataset):
                     example["class_id"] = int(rec[self.class_key])
                 if self.porosity_key in rec:
                     por = rec[self.porosity_key]
-                    example["porosity"] = float('nan') if por is None else float(por)
+                    example["porosity_frac"] = np.nan if por is None else np.float32(por)
                 if self.return_meta:
                     example["file_path_"] = rec["path"]
                 return example

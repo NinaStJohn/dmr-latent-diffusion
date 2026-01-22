@@ -32,6 +32,54 @@ class ClassEmbedder(nn.Module):
         c = self.embedding(c)
         return c
 
+# make a porosity embedder
+class PorosityEmbedder(nn.Module):
+    def __init__(self, embed_dim, n_classes=1000, key='class'):
+        super().__init__()
+        self.key = key
+        self.embedding =nn.Linear(1, embed_dim)
+
+    def forward(self, batch, key=None):
+        if key is None:
+            key = self.key
+        # this is for use in crossattn
+        c = batch[key][:, None]
+        c = self.embedding(c)
+        return c[:,None,:]
+
+# porosity AND class embedder?
+class ClassPorosityEmbedder(nn.Module):
+    def __init__(self, embed_dim, n_classes=1000, class_key='class_id', porosity_key='porosity_frac'):
+        super().__init__()
+        self.class_key = class_key
+        self.porosity_key = porosity_key
+
+        self.class_emb = nn.Embedding(n_classes, embed_dim)
+        self.poro_emb  = nn.Linear(1, embed_dim)
+
+    def forward(self, batch, key=None):
+        # class
+        cls = batch[self.class_key]
+        if cls.ndim > 1:
+            cls = cls.squeeze(-1)
+        cls = cls.long()
+        cls_tok = self.class_emb(cls)          # [B, D]
+        cls_tok = cls_tok[:, None, :]          # [B, 1, D]
+
+        # porosity
+        poro = batch[self.porosity_key]
+        if poro.ndim == 1:
+            poro = poro[:, None]               # [B, 1]
+        poro = poro.float()
+        poro_tok = self.poro_emb(poro)         # [B, D] or [B,1,D]
+        if poro_tok.ndim == 2:
+            poro_tok = poro_tok[:, None, :]    # [B, 1, D]
+
+        # make into 2 tokens
+        c = torch.cat([cls_tok, poro_tok], dim=1)  # [B, 2, D]
+        return c
+
+
 
 class TransformerEmbedder(AbstractEncoder):
     """Some transformer encoder layers"""

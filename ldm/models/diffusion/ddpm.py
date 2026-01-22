@@ -667,6 +667,12 @@ class LatentDiffusion(DDPM):
             if cond_key != self.first_stage_key:
                 if cond_key in ['caption', 'coordinates_bbox']:
                     xc = batch[cond_key]  # stays as-is (not a tensor)
+                # allow for porosity key
+                elif cond_key in ['porosity_frac', 'porosity']:
+                    xc = {
+                        'class_id': batch['class_id'],
+                        'porosity_frac': batch['porosity_frac'] if 'porosity_frac' in batch else batch['porosity'],
+                    }
                 elif cond_key in ['class_id', 'class_label']:
                     # >>> pass a DICT so ClassEmbedder can do batch[key][:, None]
                     xc = {cond_key: batch[cond_key]}
