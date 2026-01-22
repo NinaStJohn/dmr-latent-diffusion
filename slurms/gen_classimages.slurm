@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ldm-trained0
+#SBATCH --job-name=flip_2extra_2.0
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -16,17 +16,17 @@ set -euo pipefail
 
 # ---- user knobs ----
 NUM_CLASSES=6                            # classes 0..5
-REPEATS=20                               # repeats per class (array “rows”)
-N_PER=2                                  # images per invocation (per task)
+REPEATS=20                               # repeats per class (array “rows”)y
+N_PER=1                                  # images per invocation (per task)
 H=384
 W=576
 STEPS=250
-ETA=0.0                                   # defined but not used unless your script supports --eta
-SCALE=1.5
+ETA=0.0                                  
+SCALE=2.0
 
-CONFIG="/work/hdd/bdxf/nstjohn/ldmlog/multi/2025-12-09T23-31-35_dmr-ACCESS/configs/2025-12-09T23-31-35-project.yaml"
-CKPT="/work/hdd/bdxf/nstjohn/ldmlog/multi/2025-12-09T23-31-35_dmr-ACCESS/checkpoints/epoch=000045.ckpt"
-OUTROOT="/work/hdd/bdxf/$USER/trainedon0"
+CONFIG=/work/hdd/bdxf/nstjohn/ldmlog/flips/2025-12-16T16-48-21_dmr-ACCESS/configs/2025-12-16T16-48-21-project.yaml
+CKPT="/work/hdd/bdxf/nstjohn/ldmlog/flips/2025-12-16T16-48-21_dmr-ACCESS/checkpoints/epoch=000701.ckpt"
+OUTROOT="/work/hdd/bdxf/$USER/c&flip2.5-cp701"
 
 mkdir -p "soutgen" "$OUTROOT"
 
