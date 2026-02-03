@@ -75,14 +75,13 @@ model:
     cond_stage_config:
       target: ldm.modules.encoders.modules.ClassEmbedder
       params:
-        n_classes: 7
+        n_classes: 6
         embed_dim: 128
         key: class_id
     conditioning_key: crossattn
 
-
 data:
-  target: main.DataModuleFromConfig
+  target: main2.DataModuleFromConfig
   params:
     batch_size: 12
     num_workers: 6          # add this
@@ -94,9 +93,10 @@ data:
         size: [ 384 , 576 ]
         random_crop: false
         return_meta: false
+        random_flip: true
         resize_mode: keep_aspect
-        class_key: class_id
-        porosity_key: porosity
+        class_key: porosity_frac
+        porosity_key: porosity_frac
     validation:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
@@ -106,7 +106,7 @@ data:
         return_meta: false
         resize_mode:  keep_aspect
         class_key: class_id
-        porosity_key: porosity
+        porosity_key: porosity_frac
 
 
 

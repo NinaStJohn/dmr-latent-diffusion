@@ -37,3 +37,6 @@ Thumbs.db
 
 #pycase
 ~/dmr-latent-diffusion/taming/modules/vqvae/__pycache__/*
+
+#image upscale
+taming-transformers/

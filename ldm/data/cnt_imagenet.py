@@ -10,10 +10,16 @@ class CNTManifest(Dataset):
                  random_crop=False,
                  edge_prob=0.35,               # <— new: chance a crop touches an edge
                  resize_mode="keep_aspect",
+                 random_flip=False,
+                 hflip_prob=0.5,               # adding in random h/v flips
+                 vflip_prob=0.5,
                  return_meta=False, class_key="class_id", porosity_key="porosity"):
         self._bad_files = set()
         self.manifest = manifest
         self.edge_prob = float(edge_prob)
+        self.random_flip = bool(random_flip)
+        self.hflip_prob = float(hflip_prob)
+        self.vflip_prob = float(vflip_prob)
 
         # Interpret size
         if isinstance(size, int):
@@ -145,6 +151,13 @@ class CNTManifest(Dataset):
             if self.random_crop and (TH < arr.shape[0] or TW < arr.shape[1]):
                 arr = self._edge_aware_crop_hwc(arr, TH, TW, edge_prob=self.edge_prob)
 
+        # random flips (on final resized crop), before normalization
+        if self.random_flip:
+            if self.hflip_prob > 0.0 and random.random() < self.hflip_prob:
+                arr = np.flip(arr, axis=1).copy()  # horizontal
+            if self.vflip_prob > 0.0 and random.random() < self.vflip_prob:
+                arr = np.flip(arr, axis=0).copy()  # vertical
+
         # normalize to [-1,1]
         arr = (arr / 127.5) - 1.0
         return arr
@@ -162,7 +175,7 @@ class CNTManifest(Dataset):
                     example["class_id"] = int(rec[self.class_key])
                 if self.porosity_key in rec:
                     por = rec[self.porosity_key]
-                    example["porosity"] = float('nan') if por is None else float(por)
+                    example["porosity_frac"] = np.nan if por is None else np.float32(por)
                 if self.return_meta:
                     example["file_path_"] = rec["path"]
                 return example

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ldm15_ee
+#SBATCH --job-name=flipncrop
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -54,7 +54,7 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 srun python -u main2.py \
   --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
   -t \
-  --logdir /work/hdd/bdxf/$USER/ldmlog \
+  --logdir /work/hdd/bdxf/$USER/ldmlog/cropnflip \
   --max_epochs=10000000
 
 

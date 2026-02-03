@@ -307,15 +307,6 @@ class ImageLogger(Callback):
         self.log_on_batch_idx = log_on_batch_idx
         self.log_images_kwargs = log_images_kwargs if log_images_kwargs else {}
         self.log_first_step = log_first_step
-        # per-class logging knobs from YAML (safe defaults)
-        self.sample_classes = extra.get("sample_classes", None)
-        self.n_per_class    = int(extra.get("n_per_class", 4))
-        self.fixed_seed     = extra.get("fixed_seed", None)
-
-        # for class img_log
-        self.sample_classes = extra.get("sample_classes", None)  # e.g. [0,1,2,3,4,5]
-        self.n_per_class    = int(extra.get("n_per_class", 4))
-        self.fixed_seed     = extra.get("fixed_seed", None)
 
     @rank_zero_only
     def _testtube(self, pl_module, images, batch_idx, split):
@@ -347,6 +338,7 @@ class ImageLogger(Callback):
             path = os.path.join(root, filename)
             os.makedirs(os.path.split(path)[0], exist_ok=True)
             Image.fromarray(grid).save(path)
+
 
 def log_img(self, pl_module, batch, batch_idx, split="train"):
     check_idx = batch_idx if self.log_on_batch_idx else pl_module.global_step

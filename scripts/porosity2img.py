@@ -82,20 +82,6 @@ def save_imgs(x, outdir, prefix):
 # -------------------------------
 # Conditioning helpers
 # -------------------------------
-# def make_class_conditioning(model, class_id: int, batch: int, device: torch.device):
-#     class_ids = torch.full((batch,), int(class_id), device=device, dtype=torch.long)
-
-#     batch_dict = {
-#         "class_id": class_ids,
-#         "porosity_frac": torch.zeros((batch,), device=device, dtype=torch.float32),
-#     }
-
-#     cond_embed = model.get_learned_conditioning(batch_dict)
-
-#     if getattr(model, "conditioning_key", None) == "crossattn":
-#         return {"c_crossattn": cond_embed}
-#     return cond_embed
-
 def make_class_conditioning(model, class_id: int, batch: int, device: torch.device):
     """
     Builds class-label conditioning compatible with cross-attention pipelines.
@@ -152,6 +138,31 @@ def infer_latent_shape_from_vae(model, H, W, device):
         z = model.get_first_stage_encoding(z)  # -> (1, C, h, w)
     return z.shape[1], z.shape[2], z.shape[3]  # C, h, w
 
+def make_porosity_conditioning(model, porosity: float, batch: int, device: torch.device,
+                               key: str = "porosity_frac"):
+    """
+    Builds porosity conditioning compatible with cross-attention pipelines.
+    Returns:
+      - for crossattn: {"c_crossattn": <tensor [B, T, C]>}
+      - otherwise:     <tensor ...>
+    """
+    por = torch.full((batch,), float(porosity), device=device, dtype=torch.float32)
+
+    # Your PorosityEmbedder expects batch[key] and does [:, None]
+    batch_dict = {key: por}
+
+    if hasattr(model, "get_learned_conditioning"):
+        cond_embed = model.get_learned_conditioning(batch_dict)
+    elif hasattr(model, "cond_stage_model"):
+        cond_embed = model.cond_stage_model(batch_dict)
+    else:
+        raise RuntimeError("Model has no conditioning interface for porosity.")
+
+    if getattr(model, "conditioning_key", None) == "crossattn":
+        return {"c_crossattn": cond_embed}
+    return cond_embed
+
+
 
 # -------------------------------
 # Main
@@ -160,14 +171,17 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
     ap.add_argument("--ckpt", required=True)
-    ap.add_argument("--class_id", type=int, required=True)
+    ap.add_argument("--porosity", type=float, required=True)
+    ap.add_argument("--porosity_key", default="porosity_frac",
+                    help="Key expected by the porosity embedder (usually porosity_frac)")
+    ap.add_argument("--outdir", default="samples_poro")
+
     ap.add_argument("--n", type=int, default=4)
     ap.add_argument("--steps", type=int, default=50)
     ap.add_argument("--eta", type=float, default=0.0)
     ap.add_argument("--H", type=int, default=256)
     ap.add_argument("--W", type=int, default=256)
     ap.add_argument("--seed", type=int, default=None, help="Optional fixed seed; random if not set")
-    ap.add_argument("--outdir", default="samples_cls")
     ap.add_argument("--prefix", default=None)
     ap.add_argument("--scale", type=float, default=3.0)          # CFG guidance scale
     ap.add_argument("--sampler", choices=["ddim", "plms"], default="ddim")
@@ -184,7 +198,8 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     B = int(args.n)
-    cls = int(args.class_id)
+    # cls = int(args.class_id)
+    poro = float(args.porosity)
 
     # Load model
     model = load_model(args.config, args.ckpt, device)
@@ -206,7 +221,9 @@ if __name__ == "__main__":
 
 
     # Conditioning
-    cond = make_class_conditioning(model, cls, B, device)
+    # cond = make_class_conditioning(model, cls, B, device)
+    cond = make_porosity_conditioning(model, poro, B, device, key=args.porosity_key)
+
     use_cfg = float(args.scale) > 1.0
     uc = make_uncond(model, cond, B, device) if use_cfg else None
 
@@ -235,6 +252,6 @@ if __name__ == "__main__":
 
     # Save
     run_tag = args.prefix or f"s{args.seed}_t{int(time.time())}"
-    save_prefix = f"class{args.class_id}_{args.H}_{args.W}_{run_tag}"
+    save_prefix = f"poro{args.porosity}_{args.H}_{args.W}_{run_tag}"
     save_imgs(x, args.outdir, save_prefix)
     print(f"[done] saved to {args.outdir} with prefix {save_prefix}")
