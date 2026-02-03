@@ -34,7 +34,11 @@ def main():
     train_root = Path(args.train_dir)
     test_root = Path(args.test_dir)
     output_root = Path(args.output_dir)
+    this_dir = Path(__file__).resolve().parent   # .../utility
     metrics_script = Path(args.metrics_script)
+    if not metrics_script.is_absolute():
+        metrics_script = (this_dir / metrics_script).resolve()
+
 
     if not train_root.exists():
         raise FileNotFoundError(f"Train directory not found: {train_root}")
