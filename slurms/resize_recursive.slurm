@@ -14,8 +14,8 @@
 set -euo pipefail
 
 # ---- user knobs ----
-SRCROOT="/work/hdd/bdxf/nstjohn/withflips_s2.0"
-DSTROOT="/work/hdd/bdxf/nstjohn/withflips_s2.0resized"
+SRCROOT="/work/hdd/bdxf/nstjohn/pre-resize"
+DSTROOT="/work/hdd/bdxf/nstjohn/resizedSmallSample"
 RESIZE="3072"   # preserves aspect ratio, sets width=3072
 
 mkdir -p soutgen "$DSTROOT"
