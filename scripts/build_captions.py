@@ -26,11 +26,31 @@ def parse_strain_from_folder(folder_name: str, default="0%"):
 
 def parse_class_id_from_folder(folder_name: str) -> int:
     """
-    Heuristic: use the first integer at the start of the folder name as class id.
-    Example: '0_0%' -> 0, '3_sample' -> 3. If none, return 0.
+    Infer class id from common folder naming schemes.
+
+    Supports:
+      - "class0_00%" -> 0
+      - "class6_12%" -> 6
+      - "0_0%"       -> 0
+      - "3_sample"   -> 3
+    Falls back to 0 if nothing found.
     """
-    m = re.match(r'(\d+)', folder_name)
+    s = folder_name.strip()
+
+    # 1) Preferred: "class<id>_..." or "class<id>-..."
+    m = re.search(r'(?i)\bclass\s*[_-]?\s*(\d+)\b', s)
+    if m:
+        return int(m.group(1))
+
+    # 2) If it starts with digits: "3_foo", "12bar"
+    m = re.match(r'\s*(\d+)', s)
+    if m:
+        return int(m.group(1))
+
+    # 3) Any integer anywhere (last resort)
+    m = re.search(r'(\d+)', s)
     return int(m.group(1)) if m else 0
+
 
 def guess_material_from_folder(folder_name: str, class_id: int, class_to_name: dict) -> str:
     """
