@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from contextlib import contextmanager
@@ -11,7 +10,6 @@ from ldm.modules.distributions.distributions import DiagonalGaussianDistribution
 
 from ldm.util import instantiate_from_config
 
-from ldm.data.porosity import calculate_image_porosity
 
 class VQModel(pl.LightningModule):
     def __init__(self,
@@ -150,44 +148,12 @@ class VQModel(pl.LightningModule):
 
         if optimizer_idx == 0:
             # autoencode
-            aeloss, log_dict_ae = self.loss(
-                qloss, x, xrec, optimizer_idx, self.global_step,
-                last_layer=self.get_last_layer(), split="train",
-                predicted_indices=ind
-            )
+            aeloss, log_dict_ae = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
+                                            last_layer=self.get_last_layer(), split="train",
+                                            predicted_indices=ind)
 
-            total_loss = aeloss
-
-            # ----- Porosity loss (image-space) -----
-            # Use "porosity" from the manifest (percent), convert to fraction to match calculate_image_porosity.
-            if "porosity" in batch and batch["porosity"] is not None:
-                por_true = torch.as_tensor(
-                    batch["porosity"], device=x.device, dtype=torch.float32
-                )
-
-                # Mask out any NaNs/infs just in case
-                mask = torch.isfinite(por_true)
-                if mask.any():
-                    por_true_masked = por_true[mask]
-
-                    # predicted porosity from reconstructed images
-                    por_pred = self._batch_porosity(xrec)  # (B,) fraction
-                    por_pred_masked = por_pred[mask]
-
-                    por_loss = F.mse_loss(por_pred_masked, por_true_masked)
-
-                    lambda_poro = 0.1  # <-- tune this weight
-                    total_loss = total_loss + lambda_poro * por_loss
-
-                    # logging
-                    log_dict_ae["train/porosity_loss"] = por_loss
-                    log_dict_ae["train/porosity_pred_mean"] = por_pred_masked.mean()
-                    log_dict_ae["train/porosity_true_mean"] = por_true_masked.mean()
-
-            self.log("aeloss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
             self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
-            return total_loss
-
+            return aeloss
 
         if optimizer_idx == 1:
             # discriminator
@@ -294,19 +260,6 @@ class VQModel(pl.LightningModule):
         x = F.conv2d(x, weight=self.colorize)
         x = 2.*(x-x.min())/(x.max()-x.min()) - 1.
         return x
-
-    def _batch_porosity(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Compute porosity for a batch of images x in [-1, 1] with shape (B, C, H, W),
-        using calculate_image_porosity (which expects a single image tensor).
-        """
-        B = x.shape[0]
-        vals = []
-        for i in range(B):
-            # calculate_image_porosity already does [-1,1] -> [0,1] and grayscale
-            p = calculate_image_porosity(x[i])
-            vals.append(p)
-        return torch.stack(vals, dim=0)
 
 
 class VQModelInterface(VQModel):

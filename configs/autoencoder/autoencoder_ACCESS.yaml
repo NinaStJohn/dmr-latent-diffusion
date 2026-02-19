@@ -47,7 +47,7 @@ data:
     train:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
-        manifest: /u/nstjohn/cnt_imagenet/manifest_train.jsonl
+        manifest: /u/nstjohn/images/manifest_autoencoder/all_train.jsonl
         size: 256
         random_crop: True
         return_meta: False
@@ -56,7 +56,7 @@ data:
     validation:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
-        manifest: /u/nstjohn/cnt_imagenet/manifest_val.jsonl
+        manifest: /u/nstjohn/images/manifest_autoencoder/all_val.jsonl
         size: 256
         random_crop: False
         return_meta: False
