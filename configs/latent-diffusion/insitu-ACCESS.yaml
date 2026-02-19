@@ -1,0 +1,132 @@
+# dmr_ACCESS.yaml
+model:
+  base_learning_rate: 4.5e-06
+  target: ldm.models.diffusion.ddpm.LatentDiffusion
+  params:
+    # Diffusion schedule 
+    linear_start: 0.0015
+    linear_end: 0.0155
+    num_timesteps_cond: 1
+    log_every_t: 200
+    timesteps: 1000
+    loss_type: l1
+    first_stage_key: "image"
+    image_size: 64
+    channels: 8
+    cond_stage_trainable: True
+    concat_mode: False
+    scale_by_std: True
+    monitor: 'val/loss_simple_ema'
+
+    scheduler_config: # 10000 warmup steps
+      target: ldm.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps: [10000]
+        cycle_lengths: [10000000000000]
+        f_start: [1.e-6]
+        f_max: [1.]
+        f_min: [ 1.]
+
+    # ---- UNet (make sure channels match AE latents = 8) ----
+    unet_config:
+      target: ldm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        use_checkpoint: false
+        image_size: 64              # ignored at train time
+        in_channels: 8              # = AE z_channels
+        out_channels: 8             # usually same as in_channels
+        model_channels: 192         # OK start; use whatever you trained before
+        # changed to [16,8,4] to advoid patchyness
+        attention_resolutions: [16,8,4]  # changed from [ 4, 2, 1] to make larger image generation easier
+        num_res_blocks: 2
+        channel_mult: [1, 2, 4, 4]
+        use_scale_shift_norm: true
+        resblock_updown: true
+        use_new_attention_order: false
+
+        # addidtions to make the UNET see conditional
+        use_spatial_transformer: true
+        transformer_depth: 1
+        context_dim: 128
+        num_heads: 8
+
+    # ---- Hook up your trained Autoencoder  ----
+    first_stage_config:
+      target: ldm.models.autoencoder.AutoencoderKL
+      params:
+        ckpt_path: /u/nstjohn/dmr-latent-diffusion/logs/2025-08-27T20-09-27_autoencoder_ACCESS/checkpoints/last.ckpt
+        embed_dim: 8
+        ddconfig:
+          double_z: true
+          z_channels: 8
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult: [1, 2, 4]
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+
+    # ---- Class conditioning (you’re using class_id) ----
+    cond_stage_key: class_id
+    cond_stage_config:
+      target: ldm.modules.encoders.modules.ClassEmbedder
+      params:
+        n_classes: 8
+        embed_dim: 128
+        key: class_id
+    conditioning_key: crossattn
+
+data:
+  target: main2.DataModuleFromConfig
+  params:
+    batch_size: 12
+    num_workers: 6          # add this
+    wrap: true
+    train:
+      target: ldm.data.cnt_imagenet.CNTManifest
+      params:
+        manifest: /work/hdd/bdxf/nstjohn/in-situ_crop/insitu_train.jsonl
+        size: [ 384 , 576 ]
+        random_crop: false
+        return_meta: false
+        random_flip: true
+        resize_mode: keep_aspect
+        class_key: porosity_frac
+        porosity_key: porosity_frac
+    validation:
+      target: ldm.data.cnt_imagenet.CNTManifest
+      params:
+        manifest: /work/hdd/bdxf/nstjohn/in-situ_crop/insitu_val.jsonl
+        size: [ 384 , 576 ]
+        random_crop: false # don't crop the validation
+        return_meta: false
+        resize_mode:  keep_aspect
+        class_key: class_id
+        porosity_key: porosity_frac
+
+
+
+lightning:
+  callbacks:
+    image_logger:
+      target: main.ImageLogger
+      params:
+        batch_frequency: 1000
+        max_images: 8
+        increase_log_steps: True
+        
+        # for class outputs
+        # sample_classes: [0,1,2,3,4,5]
+        # n_per_class: 4
+
+
+  trainer:
+    gpus: 1
+    precision: 32
+    benchmark: true
+    accumulate_grad_batches: 6
+
