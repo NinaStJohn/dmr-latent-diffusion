@@ -12,7 +12,7 @@
 #SBATCH -e sout/%x-%j.err
 
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
-conda activate ldm310
+conda activate ldm-pl 
 cd /u/$USER/dmr-latent-diffusion
 
 echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
