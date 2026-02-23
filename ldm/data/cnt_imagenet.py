@@ -7,6 +7,7 @@ VALID_RESIZE = {"keep_aspect", "letterbox", "square_crop"}
 
 class CNTManifest(Dataset):
     def __init__(self, manifest, size,
+                 paths=None,
                  random_crop=False,
                  edge_prob=0.35,               # <— new: chance a crop touches an edge
                  resize_mode="keep_aspect",
@@ -20,6 +21,14 @@ class CNTManifest(Dataset):
         self.random_flip = bool(random_flip)
         self.hflip_prob = float(hflip_prob)
         self.vflip_prob = float(vflip_prob)
+
+        # --- compatibility: allow configs to pass `paths` instead of `manifest`
+        if manifest is None and paths is not None:
+            manifest = paths
+        if manifest is None:
+            raise TypeError("CNTManifest requires `manifest` (or legacy alias `paths`).")
+        if size is None:
+            raise TypeError("CNTManifest requires `size`.")
 
         # Interpret size
         if isinstance(size, int):
