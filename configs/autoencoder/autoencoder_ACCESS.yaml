@@ -1,68 +1,60 @@
-data:
-  target: main.DataModuleFromConfig
+model:
+  base_learning_rate: 4.5e-6
+  target: ldm.models.autoencoder.AutoencoderKL
   params:
-    batch_size: 32
-    num_workers: 8
-    train:
-      target: path.to.MyClassDataset
+    monitor: "val/rec_loss"
+    embed_dim: 16
+    lossconfig:
+      target: ldm.modules.losses.LPIPSWithDiscriminator
       params:
-        root: /path/to/train
-        transform:
-          target: torchvision.transforms.Compose
-          params:
-            transforms:
-              - target: torchvision.transforms.Resize
-                params: {size: 256}
-              - target: torchvision.transforms.CenterCrop
-                params: {size: 256}
-              - target: torchvision.transforms.ToTensor
-              - target: torchvision.transforms.Normalize
-                params:
-                  mean: [0.5, 0.5, 0.5]
-                  std: [0.5, 0.5, 0.5]
-    validation:
-      target: path.to.MyClassDataset
-      params:
-        root: /path/to/val
-        transform:
-          target: torchvision.transforms.Compose
-          params:
-            transforms:
-              - target: torchvision.transforms.Resize
-                params: {size: 256}
-              - target: torchvision.transforms.CenterCrop
-                params: {size: 256}
-              - target: torchvision.transforms.ToTensor
-              - target: torchvision.transforms.Normalize
-                params:
-                  mean: [0.5, 0.5, 0.5]
-                  std: [0.5, 0.5, 0.5]
+        disc_start: 50001
+        kl_weight: 0.000001
+        disc_weight: 0.5
 
+    ddconfig:
+      double_z: True
+      z_channels: 16
+      resolution: 384     # to match the aspect
+      in_channels: 3
+      out_ch: 3
+      ch: 64
+      ch_mult: [1,2,4]  # num_down = len(ch_mult)-1
+      num_res_blocks: 1
+      attn_resolutions: []
+      attn_type: "linear"
+      dropout: 0.0
 
+# switching to use the manifest data loader
 data:
-  target: main.DataModuleFromConfig
+  target: main2.DataModuleFromConfig
   params:
-    batch_size: 12
-    wrap: True
+    batch_size: 6
+    num_workers: 6
+    wrap: true
     train:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
         manifest: /u/nstjohn/images/manifest_autoencoder/all_train.jsonl
-        size: 256
-        random_crop: True
-        return_meta: False
+        paths: null
+        size: [384, 576]
+        resize_mode: keep_aspect
+        random_crop: false
+        random_flip: true
+        return_meta: false
         class_key: class_id
-        porosity_key: porosity
+        porosity_key: porosity_frac
     validation:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
         manifest: /u/nstjohn/images/manifest_autoencoder/all_val.jsonl
-        size: 256
-        random_crop: False
-        return_meta: False
+        paths: null
+        size: [384, 576]
+        resize_mode: keep_aspect
+        random_crop: false
+        return_meta: false
         class_key: class_id
-        porosity_key: porosity
-
+        porosity_key: porosity_frac
+  
 lightning:
   callbacks:
     image_logger:
