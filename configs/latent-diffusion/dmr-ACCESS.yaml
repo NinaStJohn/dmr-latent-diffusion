@@ -12,7 +12,7 @@ model:
     loss_type: l1
     first_stage_key: "image"
     image_size: 64
-    channels: 8
+    channels: 16
     cond_stage_trainable: True
     concat_mode: False
     scale_by_std: True
@@ -33,8 +33,8 @@ model:
       params:
         use_checkpoint: false
         image_size: 64              # ignored at train time
-        in_channels: 8              # = AE z_channels
-        out_channels: 8             # usually same as in_channels
+        in_channels: 16              # = AE z_channels
+        out_channels: 16             # usually same as in_channels
         model_channels: 192         # OK start; use whatever you trained before
         # changed to [16,8,4] to advoid patchyness
         attention_resolutions: [16,8,4]  # changed from [ 4, 2, 1] to make larger image generation easier
@@ -50,24 +50,7 @@ model:
         context_dim: 128
         num_heads: 8
 
-    # # ---- Hook up your trained Autoencoder (exactly matches your AE file) ----
-    # first_stage_config:
-    #   target: ldm.models.autoencoder.AutoencoderKL
-    #   params:
-    #     embed_dim: 8
-    #     ddconfig:
-    #       double_z: true
-    #       z_channels: 8
-    #       resolution: 256
-    #       in_channels: 3
-    #       out_ch: 3
-    #       ch: 128
-    #       ch_mult: [1, 2, 4]
-    #       num_res_blocks: 2
-    #       attn_resolutions: []
-    #       dropout: 0.0
-    #     lossconfig:
-    #       target: torch.nn.Identity
+    # Autoencoder - params from /work/hdd/bdxf/nstjohn/ldmlog/ae/2026-02-23T11-43-36_autoencoder_ACCESS/configs/2026-02-23T11-43-36-project.yaml
     first_stage_config:
       target: ldm.models.autoencoder.AutoencoderKL
       params:

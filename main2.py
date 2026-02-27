@@ -23,6 +23,10 @@ from ldm.util import instantiate_from_config
 import faulthandler
 faulthandler.enable()
 
+# hopefully fixes the ae error
+import torch.multiprocessing as mp
+mp.set_start_method("spawn", force=True)
+
 def get_parser(**parser_kwargs):
     def str2bool(v):
         if isinstance(v, bool):
