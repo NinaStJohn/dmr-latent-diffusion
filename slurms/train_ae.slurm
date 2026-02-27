@@ -29,5 +29,6 @@ srun python -u main2.py \
   -t \
   --gpus 1 \
   --logdir /work/hdd/bdxf/$USER/ldmlog/ae \
-  --resume /work/hdd/bdxf/nstjohn/ldmlog/ae/2026-02-22T16-01-44_autoencoder_ACCESS/checkpoints/last.ckpt
+  # --resume /work/hdd/bdxf/nstjohn/ldmlog/ae/2026-02-22T16-01-44_autoencoder_ACCESS/checkpoints/last.ckpt \
+  --max_epochs=10000000
 # (older PL: --gpus 1 --distributed_backend ddp)
