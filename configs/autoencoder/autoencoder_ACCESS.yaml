@@ -29,7 +29,7 @@ data:
   target: main2.DataModuleFromConfig
   params:
     batch_size: 6
-    num_workers: 6
+    num_workers: 0  # crashing becuase of workers?
     wrap: true
     train:
       target: ldm.data.cnt_imagenet.CNTManifest
@@ -65,8 +65,7 @@ lightning:
         increase_log_steps: True
 
   trainer:
-    benchmark: True
-    accumulate_grad_batches: 2   # 3 * 4 GPUs * 8 = 96 eff. batch
-    gpu: "0"                   # keep legacy PL per-rank setting as string
-    # distributed_backend: ddp
-    precision: 16
+    gpus: 1
+    precision: 32
+    benchmark: true
+    accumulate_grad_batches: 6
