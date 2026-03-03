@@ -32,6 +32,23 @@ class ClassEmbedder(nn.Module):
         c = self.embedding(c)
         return c
 
+# class embedder by strain
+class StrainEmbedder(nn.Module):
+    def __init__(self, embed_dim, key="strain_frac"):
+        super().__init__()
+        self.key = key
+        self.proj = nn.Linear(1, embed_dim)
+
+    def forward(self, batch, key=None):
+        if key is None:
+            key = self.key
+
+        # batch[key] should be shape (B,) -> make (B,1)
+        x = batch[key].float().view(-1, 1)
+        c = self.proj(x)              # (B, embed_dim)
+        return c[:, None, :]
+
+
 # make a porosity embedder
 class PorosityEmbedder(nn.Module):
     def __init__(self, embed_dim, n_classes=1000, key='class'):

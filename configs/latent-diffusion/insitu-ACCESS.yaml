@@ -108,7 +108,7 @@ data:
     train:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
-        manifest: /u/nstjohn/cnt_imagenet/train_manifest.jsonl
+        manifest: /work/hdd/bdxf/nstjohn/in-situ_crop/insitu_train.jsonl
         size: [ 384 , 576 ]
         random_crop: false
         return_meta: false
@@ -120,7 +120,7 @@ data:
     validation:
       target: ldm.data.cnt_imagenet.CNTManifest
       params:
-        manifest: /u/nstjohn/cnt_imagenet/val_manifest.jsonl
+        manifest: /work/hdd/bdxf/nstjohn/in-situ_crop/insitu_val.jsonl
         size: [ 384 , 576 ]
         random_crop: false # don't crop the validation
         return_meta: false

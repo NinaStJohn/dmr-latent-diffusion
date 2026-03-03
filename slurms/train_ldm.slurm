@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=flipncrop
+#SBATCH --job-name=strain_inst_1
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -8,8 +8,8 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=32G
 #SBATCH --time=2-00:00:00
-#SBATCH -o sout/%x-%j.out
-#SBATCH -e sout/%x-%j.err
+#SBATCH -o sout_ins/%x-%j.out
+#SBATCH -e sout_ins/%x-%j.err
 
 set -euo pipefail
 mkdir -p sout
@@ -52,9 +52,9 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 #   -t $RESUME
 
 srun python -u main2.py \
-  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml \
+  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/insitu-ACCESS.yaml\
   -t \
-  --logdir /work/hdd/bdxf/$USER/ldmlog/cropnflip \
+  --logdir /work/hdd/bdxf/$USER/ldmlog/strain_inst \
   --max_epochs=10000000
 
 

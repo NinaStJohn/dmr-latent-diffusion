@@ -7,19 +7,30 @@ VALID_RESIZE = {"keep_aspect", "letterbox", "square_crop"}
 
 class CNTManifest(Dataset):
     def __init__(self, manifest, size,
+                 paths=None,
                  random_crop=False,
                  edge_prob=0.35,               # <— new: chance a crop touches an edge
                  resize_mode="keep_aspect",
                  random_flip=False,
                  hflip_prob=0.5,               # adding in random h/v flips
                  vflip_prob=0.5,
-                 return_meta=False, class_key="class_id", porosity_key="porosity"):
+                 return_meta=False, 
+                 class_key="class_id", porosity_key="porosity",
+                 strain_class="strain_frac"):
         self._bad_files = set()
         self.manifest = manifest
         self.edge_prob = float(edge_prob)
         self.random_flip = bool(random_flip)
         self.hflip_prob = float(hflip_prob)
         self.vflip_prob = float(vflip_prob)
+
+        # --- compatibility: allow configs to pass `paths` instead of `manifest`
+        if manifest is None and paths is not None:
+            manifest = paths
+        if manifest is None:
+            raise TypeError("CNTManifest requires `manifest` (or legacy alias `paths`).")
+        if size is None:
+            raise TypeError("CNTManifest requires `size`.")
 
         # Interpret size
         if isinstance(size, int):
@@ -39,6 +50,7 @@ class CNTManifest(Dataset):
         self.return_meta = return_meta
         self.class_key = class_key
         self.porosity_key = porosity_key
+        self.strain_key = strain_class
 
         # --- Load and normalize paths ---
         man_dir = Path(self.manifest).resolve().parent
@@ -105,7 +117,11 @@ class CNTManifest(Dataset):
 
 
     def _load_resize_crop(self, path):
-        img = Image.open(path).convert("RGB")
+        # forces  R=G=B everywhere while keeping 3 channels
+        with Image.open(path) as img:
+            img = ImageOps.grayscale(img)
+            img = img.convert("RGB")
+
         iw, ih = img.size
         TW, TH = self.WH  # (W, H)
 
@@ -171,11 +187,16 @@ class CNTManifest(Dataset):
             try:
                 image = self._load_resize_crop(rec["path"])
                 example = {"image": image}
+
                 if self.class_key in rec:
-                    example["class_id"] = int(rec[self.class_key])
+                    example[self.class_key] = rec[self.class_key]  # don't force int unless you know it's int
                 if self.porosity_key in rec:
                     por = rec[self.porosity_key]
-                    example["porosity_frac"] = np.nan if por is None else np.float32(por)
+                    example["porosity_frac"] = np.float32(por) if por is not None else np.nan
+                if self.strain_key in rec:
+                    s = rec[self.strain_key]
+                    example["strain_frac"] = np.float32(s) if s is not None else np.nan
+
                 if self.return_meta:
                     example["file_path_"] = rec["path"]
                 return example

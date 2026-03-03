@@ -23,6 +23,10 @@ from ldm.util import instantiate_from_config
 import faulthandler
 faulthandler.enable()
 
+# hopefully fixes the ae error
+import torch.multiprocessing as mp
+mp.set_start_method("spawn", force=True)
+
 def get_parser(**parser_kwargs):
     def str2bool(v):
         if isinstance(v, bool):
@@ -339,111 +343,37 @@ class ImageLogger(Callback):
             os.makedirs(os.path.split(path)[0], exist_ok=True)
             Image.fromarray(grid).save(path)
 
+    def log_img(self, pl_module, batch, batch_idx, split="train"):
+        check_idx = batch_idx if self.log_on_batch_idx else pl_module.global_step
+        if (self.check_frequency(check_idx) and  # batch_idx % self.batch_freq == 0
+                hasattr(pl_module, "log_images") and
+                callable(pl_module.log_images) and
+                self.max_images > 0):
+            logger = type(pl_module.logger)
 
-def log_img(self, pl_module, batch, batch_idx, split="train"):
-    check_idx = batch_idx if self.log_on_batch_idx else pl_module.global_step
-    if not ((self.check_frequency(check_idx)
-             and hasattr(pl_module, "log_images")
-             and callable(pl_module.log_images)
-             and self.max_images > 0)):
-        return
+            is_train = pl_module.training
+            if is_train:
+                pl_module.eval()
 
-    logger = type(pl_module.logger)
-    is_train = pl_module.training
-    if is_train:
-        pl_module.eval()
+            with torch.no_grad():
+                images = pl_module.log_images(batch, split=split, **self.log_images_kwargs)
 
-    try:
-        # --- NEW: Per-class mode if configured ---
-        if self.sample_classes:
-            import torch, os, torchvision
-            g = None
-            if self.fixed_seed is not None:
-                g = torch.Generator(device=pl_module.device)
-                g.manual_seed(int(self.fixed_seed))
+            for k in images:
+                N = min(images[k].shape[0], self.max_images)
+                images[k] = images[k][:N]
+                if isinstance(images[k], torch.Tensor):
+                    images[k] = images[k].detach().cpu()
+                    if self.clamp:
+                        images[k] = torch.clamp(images[k], -1., 1.)
 
-            for cls in self.sample_classes:
-                # call model with the special args we added earlier
-                try:
-                    images = pl_module.log_images(
-                        batch, split=split,
-                        force_class_id=int(cls),
-                        n_samples=int(self.n_per_class),
-                        generator=g,
-                        **self.log_images_kwargs
-                    )
-                except TypeError:
-                    # if your model's log_images doesn't accept generator
-                    images = pl_module.log_images(
-                        batch, split=split,
-                        force_class_id=int(cls),
-                        n_samples=int(self.n_per_class),
-                        **self.log_images_kwargs
-                    )
+            self.log_local(pl_module.logger.save_dir, split, images,
+                           pl_module.global_step, pl_module.current_epoch, batch_idx)
 
-                # clamp/move/cap
-                for k in images:
-                    N = min(images[k].shape[0], self.max_images, self.n_per_class)
-                    img = images[k][:N]
-                    if isinstance(img, torch.Tensor):
-                        img = img.detach().cpu()
-                        if self.clamp:
-                            img = torch.clamp(img, -1., 1.)
-                    images[k] = img
-
-                # save locally with class suffix
-                self.log_local_per_class(pl_module.logger.save_dir, split, images,
-                                         pl_module.global_step, pl_module.current_epoch, batch_idx,
-                                         cls_suffix=f"class{int(cls):02d}")
-
-                # also push to logger with class suffix
-                logger_log_images = self.logger_log_images.get(logger, lambda *args, **kwargs: None)
-                tagged = {f"{k}_class{int(cls):02d}": v for k, v in images.items()}
-                logger_log_images(pl_module, tagged, pl_module.global_step, split)
+            logger_log_images = self.logger_log_images.get(logger, lambda *args, **kwargs: None)
+            logger_log_images(pl_module, images, pl_module.global_step, split)
 
             if is_train:
                 pl_module.train()
-            return
-
-        # --- ORIGINAL mixed-class mode (unchanged) ---
-        with torch.no_grad():
-            images = pl_module.log_images(batch, split=split, **self.log_images_kwargs)
-
-        for k in images:
-            N = min(images[k].shape[0], self.max_images)
-            images[k] = images[k][:N]
-            if isinstance(images[k], torch.Tensor):
-                images[k] = images[k].detach().cpu()
-                if self.clamp:
-                    images[k] = torch.clamp(images[k], -1., 1.)
-
-        self.log_local(pl_module.logger.save_dir, split, images,
-                       pl_module.global_step, pl_module.current_epoch, batch_idx)
-
-        logger_log_images = self.logger_log_images.get(logger, lambda *args, **kwargs: None)
-        logger_log_images(pl_module, images, pl_module.global_step, split)
-
-    finally:
-        if is_train:
-            pl_module.train()
-
-
-    @rank_zero_only
-    def log_local_per_class(self, save_dir, split, images,
-                            global_step, current_epoch, batch_idx, cls_suffix=""):
-        root = os.path.join(save_dir, "images", split)
-        os.makedirs(root, exist_ok=True)
-        for k in images:
-            grid = torchvision.utils.make_grid(images[k], nrow=4)
-            if self.rescale:
-                grid = (grid + 1.0) / 2.0  # -1..1 -> 0..1
-            grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1).numpy()
-            grid = (grid * 255).astype(np.uint8)
-            fname = f"{k}_{cls_suffix or 'mixed'}_gs-{global_step:06}_e-{current_epoch:06}_b-{batch_idx:06}.png"
-            Image.fromarray(grid).save(os.path.join(root, fname))
-
-
-
 
     def check_frequency(self, check_idx):
         if ((check_idx % self.batch_freq) == 0 or (check_idx in self.log_steps)) and (
