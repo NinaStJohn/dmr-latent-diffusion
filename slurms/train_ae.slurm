@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ae-1g
+#SBATCH --job-name=ae-CNT
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -28,7 +28,7 @@ srun python -u main2.py \
   --base configs/autoencoder/autoencoder_ACCESS.yaml \
   -t \
   --gpus 1 \
-  --logdir /work/hdd/bdxf/$USER/ldmlog/ae \
+  --logdir /work/hdd/bdxf/$USER/ae/insitu \
   # --resume /work/hdd/bdxf/nstjohn/ldmlog/ae/2026-02-22T16-01-44_autoencoder_ACCESS/checkpoints/last.ckpt \
   --max_epochs=10000000
 # (older PL: --gpus 1 --distributed_backend ddp)
