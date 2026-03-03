@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ae-CNT
+#SBATCH --job-name=ae-insitu
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
