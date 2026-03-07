@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=strain_inst_1
+#SBATCH --job-name=strain_cnt
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -52,9 +52,9 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 #   -t $RESUME
 
 srun python -u main2.py \
-  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/insitu-ACCESS.yaml\
+  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml\
   -t \
-  --logdir /work/hdd/bdxf/$USER/ldmlog/strain_inst \
+  --logdir /work/hdd/bdxf/$USER/ldmlog/strain_cnt \
   --max_epochs=10000000
 
 
