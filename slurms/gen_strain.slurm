@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=strain_ldm
+#SBATCH --job-name=strain_insiu
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=120G
 #SBATCH --time=1-00:00:00
-#SBATCH --array=0-119%6
+#SBATCH --array=0-159%6
 #SBATCH -o soutgen/%x-%j_%a.out
 #SBATCH -e soutgen/%x-%j_%a.err
 
@@ -16,8 +16,8 @@ set -euo pipefail
 
 # ---- sweep knobs ----
 STRAIN_START=0.00
-STRAIN_STEP=0.04
-N_STRAIN=6        # 0.00, 0.04, 0.08, 0.12, 0.16, 0.20
+STRAIN_STEP=0.02
+N_STRAIN=8        # 0 02 04 06 08 10 12 14 
 REPEATS=20        # 20 repeats per strain
 N_PER=1
 
@@ -29,9 +29,9 @@ SCALE=2.0
 STRAIN_KEY="strain_frac"
 
 # ---- paths ----
-CONFIG="/work/hdd/bdxf/$USER/ldmlog/strain/2026-02-27T15-55-27_dmr-ACCESS/configs/2026-02-27T15-55-27-project.yaml"
-CKPT="/work/hdd/bdxf/$USER/ldmlog/strain/2026-02-27T15-55-27_dmr-ACCESS/checkpoints/last.ckpt"
-OUTROOT="/work/hdd/bdxf/$USER/strain_sweep_step0.04"
+CONFIG="/work/hdd/bdxf/$USER/ldmlog/strain_inst/2026-03-05T21-11-41_insitu-ACCESS/configs/2026-03-05T21-11-41-project.yaml"
+CKPT="/work/hdd/bdxf/$USER/ldmlog/strain_inst/2026-03-05T21-11-41_insitu-ACCESS/checkpoints/last.ckpt"
+OUTROOT="/work/hdd/bdxf/$USER/cnt_strain_sweep_step0.02"
 
 mkdir -p "soutgen" "$OUTROOT"
 
@@ -42,10 +42,15 @@ cd "/u/$USER/dmr-latent-diffusion"
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-6}"
 
-# ---- map array idx -> (repeat, strain_index) ----
+# ---- map array idx -> (strain_index, repeat) ----
 IDX=${SLURM_ARRAY_TASK_ID}
-REPEAT_IDX=$(( IDX / N_STRAIN ))
-STRAIN_IDX=$(( IDX % N_STRAIN ))
+TOTAL=$(( N_STRAIN * REPEATS ))
+if (( IDX >= TOTAL )); then
+  echo "IDX $IDX out of range (TOTAL=$TOTAL)"; exit 1
+fi
+
+STRAIN_IDX=$(( IDX / REPEATS ))
+REPEAT_IDX=$(( IDX % REPEATS ))
 
 export STRAIN_START STRAIN_STEP STRAIN_IDX
 STRAIN=$(python - <<'PY'
@@ -53,13 +58,12 @@ import os
 start = float(os.environ["STRAIN_START"])
 step  = float(os.environ["STRAIN_STEP"])
 idx   = int(os.environ["STRAIN_IDX"])
-v = start + idx * step
-print(f"{v:.4f}")
+print(f"{start + idx * step:.4f}")
 PY
 )
 
 BASE_SEED=23
-SEED=$(( BASE_SEED + IDX ))
+SEED=$(( BASE_SEED + REPEAT_IDX ))   # paired noise across strains
 
 OUTDIR="${OUTROOT}/strain_${STRAIN}"
 PREFIX="strain${STRAIN}_r${REPEAT_IDX}_s${SEED}"
@@ -81,3 +85,16 @@ python scripts/strain2img.py \
   --scale "$SCALE" \
   --outdir "$OUTDIR" \
   --prefix "$PREFIX"
+
+# python scripts/strain2img.py \
+#   --config /work/hdd/bdxf/nstjohn/ldmlog/strain_inst/2026-03-05T21-11-41_insitu-ACCESS/configs/2026-03-05T21-11-41-project.yaml \
+#   --ckpt /work/hdd/bdxf/nstjohn/ldmlog/strain_inst/2026-03-05T21-11-41_insitu-ACCESS/checkpoints/last.ckpt   \
+#   --strain 0.0 \
+#   --strain_key strain_frac \
+#   --n 2 \
+#   --H 384 --W 250 \
+#   --steps 250 \
+#   --eta 0.0 \
+#   --autocast \
+#   --scale 2.0 \
+#   --outdir /work/hdd/bdxf/nstjohn/cnt_strain_test0.0
