@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=120G
 #SBATCH --time=1-00:00:00
-#SBATCH --array=0-159%6
+#SBATCH --array=0-119%6
 #SBATCH -o soutgen/%x-%j_%a.out
 #SBATCH -e soutgen/%x-%j_%a.err
 
@@ -16,8 +16,8 @@ set -euo pipefail
 
 # ---- sweep knobs ----
 STRAIN_START=0.00
-STRAIN_STEP=0.02
-N_STRAIN=8        # 0 02 04 06 08 10 12 14 
+STRAIN_STEP=0.04
+N_STRAIN=6        # 0 02 04 06 08 10 12 14 
 REPEATS=20        # 20 repeats per strain
 N_PER=1
 
@@ -28,10 +28,17 @@ ETA=0.0
 SCALE=2.0
 STRAIN_KEY="strain_frac"
 
-# ---- paths ----
-CONFIG="/work/hdd/bdxf/$USER/ldmlog/strain_inst/2026-03-05T21-11-41_insitu-ACCESS/configs/2026-03-05T21-11-41-project.yaml"
-CKPT="/work/hdd/bdxf/$USER/ldmlog/strain_inst/2026-03-05T21-11-41_insitu-ACCESS/checkpoints/last.ckpt"
-OUTROOT="/work/hdd/bdxf/$USER/cnt_strain_sweep_step0.02"
+# # ---- paths ---- INSTU
+# CONFIG="/work/hdd/bdxf/$USER/ldmlog/strain_inst/2026-03-05T21-11-41_insitu-ACCESS/configs/2026-03-05T21-11-41-project.yaml"
+# CKPT="/work/hdd/bdxf/$USER/ldmlog/strain_inst/2026-03-05T21-11-41_insitu-ACCESS/checkpoints/epoch=003144.ckpt"
+# OUTROOT="/work/hdd/bdxf/$USER/instu_strain_sweep_step0.02"
+
+# ---- paths ---- CNT
+CONFIG="/work/hdd/bdxf/$USER/ldmlog/strain_cnt/2026-03-06T19-38-09_dmr-ACCESS/configs/2026-03-06T19-38-09-project.yaml"
+CKPT="/work/hdd/bdxf/$USER/ldmlog/strain_cnt/2026-03-06T19-38-09_dmr-ACCESS/checkpoints/last.ckpt"
+OUTROOT="/work/hdd/bdxf/$USER/snt_strain_sweep_step0.04"
+
+
 
 mkdir -p "soutgen" "$OUTROOT"
 
