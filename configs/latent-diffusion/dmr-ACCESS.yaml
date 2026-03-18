@@ -81,24 +81,24 @@ model:
           dropout: 0.0
 
     # ---- Class conditioning (class_id) ----
-    # cond_stage_key: class_id
-    # cond_stage_config:
-    #   target: ldm.modules.encoders.modules.ClassEmbedder
-    #   params:
-    #     n_classes: 6
-    #     embed_dim: 128
-    #     key: class_id
-    # conditioning_key: crossattn
+    cond_stage_key: class_id
+    cond_stage_config:
+      target: ldm.modules.encoders.modules.ClassEmbedder
+      params:
+        n_classes: 6
+        embed_dim: 128
+        key: class_id
+    conditioning_key: crossattn
 
     # ---- Strain conditioning (strain_frac) ----
-    cond_stage_key: strain_frac
-    cond_stage_config:
-      target: ldm.modules.encoders.modules.StrainEmbedder
-      params:
-        # n_classes: 6
-        embed_dim: 128
-        key: strain_frac
-    conditioning_key: crossattn
+    # cond_stage_key: strain_frac
+    # cond_stage_config:
+    #   target: ldm.modules.encoders.modules.StrainEmbedder
+    #   params:
+    #     # n_classes: 6
+    #     embed_dim: 128
+    #     key: strain_frac
+    # conditioning_key: crossattn
 
 data:
   target: main2.DataModuleFromConfig
@@ -115,8 +115,8 @@ data:
         return_meta: false
         random_flip: true
         resize_mode: keep_aspect
-        # class_key: class_id
-        strain_class: strain_frac
+        class_key: class_id
+        # strain_class: strain_frac
         # porosity_key: porosity_frac
     validation:
       target: ldm.data.cnt_imagenet.CNTManifest
@@ -126,8 +126,8 @@ data:
         random_crop: false # don't crop the validation
         return_meta: false
         resize_mode:  keep_aspect
-        # class_key: class_id
-        strain_class: strain_frac
+        class_key: class_id
+        # strain_class: strain_frac
         # porosity_key: porosity_frac
 
 

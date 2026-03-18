@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=strain_cnt
+#SBATCH --job-name=flips_insit
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -14,8 +14,9 @@
 set -euo pipefail
 mkdir -p sout
 
-source "$HOME/miniconda3/etc/profile.d/conda.sh"
-conda activate ldm-pl
+source /u/$USER/miniconda3/etc/profile.d/conda.sh
+conda activate /work/nvme/bdxf/nstjohn/conda_envs/ldm-pl
+
 cd /u/$USER/dmr-latent-diffusion
 
 echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
@@ -54,7 +55,7 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 srun python -u main2.py \
   --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml\
   -t \
-  --logdir /work/hdd/bdxf/$USER/ldmlog/strain_cnt \
+  --logdir /work/hdd/bdxf/$USER/ldmlog/flips_instu \
   --max_epochs=10000000
 
 
