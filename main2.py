@@ -1,5 +1,6 @@
 import argparse, os, sys, datetime, glob, importlib, csv
 import numpy as np
+np.Inf = np.inf
 import time
 import torch
 import torchvision
