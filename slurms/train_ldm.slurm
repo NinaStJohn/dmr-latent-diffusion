@@ -28,9 +28,6 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export NCCL_DEBUG=WARN
 export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 
-# CONFIG=/u/nstjohn/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml
-# LOGDIR_BASE=/u/nstjohn/dmr-latent-diffusion/logs
-
 # # Optional auto-resume from last.ckpt in a given run directory (set RUN_ID if you want)
 # RUN_ID=""   # e.g. 2025-08-27T20-09-27_autoencoder_ACCESS
 # RESUME=""
@@ -42,18 +39,8 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256"
 #   fi
 # fi
 
-# YAML should contain:
-# lightning.trainer:
-#   gpus: "0"
-#   accelerator: gpu
-#   precision: 16-true
-# (Don't pass --gpus here; your main.py reads from YAML.)
-# srun --ntasks=1 python -u main.py \
-#   --base "$CONFIG" \
-#   -t $RESUME
-
 srun python -u main2.py \
-  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/dmr-ACCESS.yaml\
+  --base /u/$USER/dmr-latent-diffusion/configs/latent-diffusion/insitu-ACCESS.yaml\
   -t \
   --logdir /work/hdd/bdxf/$USER/ldmlog/flips_instu \
   --max_epochs=10000000
