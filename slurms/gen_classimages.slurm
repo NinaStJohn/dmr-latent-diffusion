@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=120G
 #SBATCH --time=1-00:00:00
-#SBATCH --array=0-479%6
+#SBATCH --array=0-140%7
 #SBATCH -o soutgen/%x-%j_%a.out
 #SBATCH -e soutgen/%x-%j_%a.err
 
@@ -24,9 +24,9 @@ STEPS=250
 ETA=0.0
 SCALE=2.0
 
-CONFIG=/work/hdd/bdxf/$USER/ldmlog/flips/2025-12-16T16-48-21_dmr-ACCESS/configs/2025-12-16T16-48-21-project.yaml
-CKPT=/work/hdd/bdxf/$USER/ldmlog/flips/2025-12-16T16-48-21_dmr-ACCESS/checkpoints/last.ckpt
-OUTROOT="/work/hdd/bdxf/$USER/flip_s2.0_largebatch"
+CONFIG=/work/hdd/bdxf/$USER/ldmlog/flips_instu/2026-04-04T18-47-56_insitu-ACCESS/configs/2026-04-04T18-47-56-project.yaml
+CKPT=/work/hdd/bdxf/$USER/ldmlog/flips_instu/2026-04-04T18-47-56_insitu-ACCESS/checkpoints/epoch=002150.ckpt
+OUTROOT="/work/hdd/bdxf/$USER/flip_s2.0_instu_flip"
 
 mkdir -p "soutgen" "$OUTROOT"
 
