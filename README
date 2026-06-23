@@ -1,0 +1,19 @@
+# Latent Diffusion to follow class Trends of Microstrucutres"
+
+The purpose of this repsitory is to create an template to make a generator that follows class trends in microstructures based on strain percentage. 
+
+### Setup
+
+
+### Train ae
+
+
+
+### Train LDM
+
+
+
+### Generate Images
+
+
+### Results

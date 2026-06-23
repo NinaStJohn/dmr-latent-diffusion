@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=resize_recursive_3072
+#SBATCH --job-name=resize_recursive_2952
 #SBATCH --account=bdxf-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --gpus-per-task=1              # <-- policy compliance (even if unused)
+#SBATCH --gpus-per-task=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00
@@ -14,9 +14,9 @@
 set -euo pipefail
 
 # ---- user knobs ----
-SRCROOT="/work/hdd/bdxf/nstjohn/pre-resize"
-DSTROOT="/work/hdd/bdxf/nstjohn/resizedSmallSample"
-RESIZE="3072"   # preserves aspect ratio, sets width=3072
+SRCROOT="/work/hdd/bdxf/nstjohn/flip_s2.0_instu_flip"
+DSTROOT="/work/hdd/bdxf/nstjohn/resizedSmallSampleInstu"
+RESIZE="2952"
 
 mkdir -p soutgen "$DSTROOT"
 
@@ -35,14 +35,26 @@ echo "DSTROOT=$DSTROOT"
 echo "RESIZE=$RESIZE"
 
 # ---- walk + mirror tree, keep filenames ----
+# FIX 1: Strip trailing slash from SRCROOT so prefix removal is always consistent
+SRCROOT="${SRCROOT%/}"
+
 find "$SRCROOT" -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" \) -print0 |
 while IFS= read -r -d '' src; do
-  rel="${src#$SRCROOT/}"
+  # FIX 2: Use parameter expansion against the normalized (no trailing slash) SRCROOT
+  rel="${src#${SRCROOT}/}"
+
+  # Guard: if rel == src, the strip failed — skip rather than write to wrong path
+  if [[ "$rel" == "$src" ]]; then
+    echo "WARNING: could not relativize '$src', skipping" >&2
+    continue
+  fi
+
   dst="$DSTROOT/$rel"
   mkdir -p "$(dirname "$dst")"
 
   echo "Resizing: $rel"
-  magick "$src" -resize "$RESIZE" "$dst"
+  # FIX 3: -colorspace Gray converts to black and white
+  magick "$src" -resize "$RESIZE" -colorspace Gray "$dst"
 done
 
 echo "Done."
