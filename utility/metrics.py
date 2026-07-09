@@ -99,8 +99,8 @@ def calculate_fid(act1, act2):
 def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder, fixed_axis_scaling=False):
     print("Plotting", metric_name)
     fig, ax = plt.subplots(1, 1, figsize=[6, 6])
-    first_label = 'Train' if train_folder else 'Original'
-    second_label = 'Test' if train_folder else 'Reconstructed'
+    first_label = 'Real' if train_folder else 'Original'
+    second_label = 'Synthetic' if train_folder else 'Reconstructed'
 
     train_distances = []
     train_probabilities = []
@@ -155,7 +155,7 @@ def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder
 
     # ax.set_xlabel("distance")
     # ax.set_ylabel("probability")
-    # ax.legend()
+    ax.legend()
     # fig.suptitle(metric_name)
     fig.savefig(os.path.join(metrics_folder, f"{metric_name}.png"))
     
@@ -163,8 +163,8 @@ def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder
 def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, fixed_axis_scaling=False):
     print("Plotting", metric_name)
     fig, ax = plt.subplots(1, 2, figsize=[7, 4])
-    first_label = 'Train' if train_folder else 'Original'
-    second_label = 'Test' if train_folder else 'Reconstructed'
+    first_label = 'Real' if train_folder else 'Original'
+    second_label = 'Synthetic' if train_folder else 'Reconstructed'
 
     def compute_mean_and_range(dataset):
         bin_centers = np.concatenate([d.bin_centers for d in dataset])
