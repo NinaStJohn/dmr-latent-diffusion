@@ -462,10 +462,13 @@ def calculate_chord_lengths(image, direction='horizontal'):
     chord_lengths = []
     
     for row in data:
+        row = (row > 0).astype(np.uint8)
         padded = np.pad(row, (1, 1), mode='constant')
         diff = np.diff(padded)
+
         starts = np.where(diff == 1)[0]
-        ends = np.where(diff == 255)[0]
+        ends = np.where(diff == -1)[0]
+        
         chord_lengths.extend(ends - starts)
 
     return chord_lengths

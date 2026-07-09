@@ -29,6 +29,7 @@ def main():
     parser.add_argument("--target_porosity", type=float, default=None, help="Target porosity for match_porosity.")
     parser.add_argument("--sauvola_window", type=int, default=101, help="Window size for Sauvola.")
     parser.add_argument("--sauvola_k", type=float, default=0.2, help="k param for Sauvola.")
+    parser.add_argument("--fixed_axis_scaling", action="store_true", help="Plot all graphs with same axis scaling (no autoscaling)")
     args = parser.parse_args()
 
     train_root = Path(args.train_dir)
@@ -81,6 +82,8 @@ def main():
             cmd.append("--fid_only")
         if args.pores_are_bright:
             cmd.append("--pores_are_bright")
+        if args.fixed_axis_scaling:
+            cmd.append("--fixed_axis_scaling")
         if args.target_porosity is not None:
             cmd += ["--target_porosity", str(args.target_porosity)]
 

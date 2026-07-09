@@ -20,6 +20,41 @@ import lineal_path_distribution
 import pore_size_distribution
 import skimage
 
+# defining fixed axis limits to make graph scaling comparable across strain classes, 
+AXIS_LIMITS = {
+    "Two Point Correlation": {
+        "xlim": (-10, 1100),
+        "ylim": (1e-3, 1.5),
+        "yscale": "log",
+    },
+    "Chord Length Distribution": {
+        "xlim": (-10, 300),
+        "ylim": (1e-5, 1.5),
+        "yscale": "log",
+    },
+    "Lineal Path Distribution": {
+        "xlim": (-10, 250),
+        "ylim": (1e-5, 2e-1),
+        "yscale": "log",
+    },
+}
+
+PDF_TICKS = {
+    "Lineal Path Distribution": {
+        "xticks": [0, 50, 100, 150, 200, 250],
+        "yticks": [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+    },
+    "Chord Length Distribution": {
+        "xticks": [0, 50, 100, 150, 200, 250, 300],
+        "yticks": [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0],
+    },
+    "Two Point Correlation": {
+        "xticks": [0, 200, 400, 600, 800, 1000],
+        "yticks": [1e-3, 1e-2, 1e-1, 1e0],
+    }
+}
+
+
 def load_images(folder, mode):
     images = []
     if mode == "train":
@@ -61,7 +96,7 @@ def calculate_fid(act1, act2):
     return fid
 
 
-def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder):
+def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder, fixed_axis_scaling=False):
     print("Plotting", metric_name)
     fig, ax = plt.subplots(1, 1, figsize=[6, 6])
     first_label = 'Train' if train_folder else 'Original'
@@ -106,6 +141,18 @@ def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder
     # change y axis to log
     ax.set_yscale("log")
 
+    # fix axis scaling if specified
+    if fixed_axis_scaling:
+        limits = AXIS_LIMITS.get(metric_name)
+        ticks = PDF_TICKS.get(metric_name)
+        if limits:
+            ax.set_xlim(*limits["xlim"])
+            ax.set_ylim(*limits["ylim"])
+            ax.set_yscale(limits["yscale"])
+        if ticks:
+            ax.set_xticks(ticks["xticks"])
+            ax.set_yticks(ticks["yticks"])
+
     # ax.set_xlabel("distance")
     # ax.set_ylabel("probability")
     # ax.legend()
@@ -113,7 +160,7 @@ def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder
     fig.savefig(os.path.join(metrics_folder, f"{metric_name}.png"))
     
 
-def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2):
+def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, fixed_axis_scaling=False):
     print("Plotting", metric_name)
     fig, ax = plt.subplots(1, 2, figsize=[7, 4])
     first_label = 'Train' if train_folder else 'Original'
@@ -162,20 +209,31 @@ def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2):
     for a in ax:
         a.legend()
 
-    if "Chord" or "Two" in metric_name :
-        for a in ax:
-            a.set_yscale("log")
+    #if "Chord" in metric_name or "Two" in metric_name :
+    for a in ax:
+        a.set_yscale("log")
+    
+    if fixed_axis_scaling:
+        limits = AXIS_LIMITS.get(metric_name)
+        ticks = PDF_TICKS.get(metric_name)
+        if limits:
+            ax[0].set_xlim(*limits["xlim"])
+            ax[0].set_ylim(*limits["ylim"])
+            ax[0].set_yscale(limits["yscale"])
+        if ticks:
+            ax[0].set_xticks(ticks["xticks"])
+            ax[0].set_yticks(ticks["yticks"])
 
     fig.suptitle(metric_name)
     fig.savefig(os.path.join(metrics_folder, f"{metric_name}.png"))
 
 
-def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_only):
+def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_only, fixed_axis_scaling=False):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if train_folder:
         train_images = load_images(train_folder, "test")
-        test_images = load_images(test_folder, "test")[:3]
+        test_images = load_images(test_folder, "test")
 
         print("Images loaded")
 
@@ -212,7 +270,11 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
 
                 np_array = (np_array > thresh).astype(np.uint8) * 255
                 metrics["two_point_correlation"]['train'].append(two_point_correlation.two_point_correlation(np_array))
-                metrics["chord_length_distribution"]['train'].append(ps.metrics.chord_length_distribution(np_array))
+
+                #CHANGES HERE
+                binary = np_array > thresh
+                chords = ps.filters.apply_chords(binary)
+                metrics["chord_length_distribution"]['train'].append(ps.metrics.chord_length_distribution(chords))
 
             print("Beginning metric calculations for test images")
             for i, im in enumerate(test_images):
@@ -226,8 +288,11 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
 
                 np_array = (np_array > thresh).astype(np.uint8) * 255
                 metrics["two_point_correlation"]['test'].append(two_point_correlation.two_point_correlation(np_array))
-                metrics["chord_length_distribution"]['test'].append(ps.metrics.chord_length_distribution(np_array))
-
+                
+                #CHANGES HERE
+                binary = np_array > thresh
+                chords = ps.filters.apply_chords(binary)
+                metrics["chord_length_distribution"]['test'].append(ps.metrics.chord_length_distribution(chords))
         else:
             print("Beginning metric calculations for original image")
             im = Image.open(org_image)
@@ -253,10 +318,10 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
     
 
 
-        plot_metric(metrics["two_point_correlation"]['train'], metrics["two_point_correlation"]['test'], "Two Point Correlation", metrics_folder, train_folder)
-        plot_pdf_cdf_bar(metrics["pore_size_distribution"], "Pore Size Distribution", metrics_folder, train_folder)
-        plot_pdf_cdf_bar(metrics["lineal_path_distribution"], "Lineal Path Distribution", metrics_folder, train_folder)
-        plot_pdf_cdf_bar(metrics["chord_length_distribution"], "Chord Length Distribution", metrics_folder, train_folder)
+        plot_metric(metrics["two_point_correlation"]['train'], metrics["two_point_correlation"]['test'], "Two Point Correlation", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
+        plot_pdf_cdf_bar(metrics["pore_size_distribution"], "Pore Size Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
+        plot_pdf_cdf_bar(metrics["lineal_path_distribution"], "Lineal Path Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
+        plot_pdf_cdf_bar(metrics["chord_length_distribution"], "Chord Length Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compute and plot metrics for GAN generated images.")
@@ -266,9 +331,10 @@ if __name__ == "__main__":
     parser.add_argument("--rec_image", type=str, help="Reconstructed image from original image")
     parser.add_argument("--metrics_folder", type=str, required=True, help="Folder to save metrics plots")
     parser.add_argument("--fid_only", action="store_true")
+    parser.add_argument("--fixed_axis_scaling", action="store_true", help="Plot all graphs with same axis scaling (no autoscaling)")
 
     args = parser.parse_args()
 
     if not ((args.train_folder and args.test_folder) or (args.org_image and args.rec_image)):
         parser.error("Either both train_folder and test_folder must be provided, or both org_image and rec_image must be provided.")
-    main(args.train_folder, args.test_folder, args.org_image, args.rec_image, args.metrics_folder, args.fid_only)
+    main(args.train_folder, args.test_folder, args.org_image, args.rec_image, args.metrics_folder, args.fid_only, args.fixed_axis_scaling)
