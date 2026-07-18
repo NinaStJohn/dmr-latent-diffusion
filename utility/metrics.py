@@ -4,6 +4,7 @@ os.environ["OMP_NUM_THREADS"] = "1"          # optional: avoid oversubscription
 
 import argparse
 import numpy as np
+import pandas as pd
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.linalg import sqrtm
@@ -132,6 +133,18 @@ def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder
     test_min_prob = np.array([min([np.interp(d, data.distance, data.probability) for data in test_data]) for d in distance_range])
     test_max_prob = np.array([max([np.interp(d, data.distance, data.probability) for data in test_data]) for d in distance_range])
 
+    #save data to csv
+    df = pd.DataFrame({
+        'distance': distance_range,
+        f'{first_label}_mean_prob': train_mean_prob,
+        f'{first_label}_min_prob': train_min_prob,
+        f'{first_label}_max_prob': train_max_prob,
+        f'{second_label}_mean_prob': test_mean_prob,
+        f'{second_label}_min_prob': test_min_prob,
+        f'{second_label}_max_prob': test_max_prob
+    })
+    df.to_csv(os.path.join(metrics_folder, f"{metric_name}.csv"), index=False)
+
     ax.fill_between(distance_range, train_min_prob, train_max_prob, color='blue', alpha=0.2, label=first_label)
     ax.fill_between(distance_range, test_min_prob, test_max_prob, color='red', alpha=0.2, label=second_label)
 
@@ -193,6 +206,30 @@ def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, f
 
     train_bin_centers, train_mean_pdf, train_min_pdf, train_max_pdf, train_mean_cdf, train_min_cdf, train_max_cdf = compute_mean_and_range(data['train'])
     test_bin_centers, test_mean_pdf, test_min_pdf, test_max_pdf, test_mean_cdf, test_min_cdf, test_max_cdf = compute_mean_and_range(data['test'])
+
+    # Save data to CSV
+    df1 = pd.DataFrame({
+        'real_bin_centers': train_bin_centers,
+        f'{first_label}_mean_pdf': train_mean_pdf,
+        f'{first_label}_min_pdf': train_min_pdf,
+        f'{first_label}_max_pdf': train_max_pdf,
+
+        f'{first_label}_mean_cdf': train_mean_cdf,
+        f'{first_label}_min_cdf': train_min_cdf,
+        f'{first_label}_max_cdf': train_max_cdf,
+    })
+    df2 = pd.DataFrame({
+        'synthetic_bin_centers': test_bin_centers,
+        f'{second_label}_mean_pdf': test_mean_pdf,
+        f'{second_label}_min_pdf': test_min_pdf,
+        f'{second_label}_max_pdf': test_max_pdf,
+
+        f'{second_label}_mean_cdf': test_mean_cdf,
+        f'{second_label}_min_cdf': test_min_cdf,
+        f'{second_label}_max_cdf': test_max_cdf
+    })
+    df1.to_csv(os.path.join(metrics_folder, f"{metric_name}_{first_label}.csv"), index=False)
+    df2.to_csv(os.path.join(metrics_folder, f"{metric_name}_{second_label}.csv"), index=False)
 
     ax[0].fill_between(train_bin_centers, train_min_pdf, train_max_pdf, color='blue', alpha=0.2, label=f'Range_{first_label}')
     ax[0].fill_between(test_bin_centers, test_min_pdf, test_max_pdf, color='red', alpha=0.2, label=f'Range_{second_label}')
@@ -271,7 +308,7 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
                 np_array = (np_array > thresh).astype(np.uint8) * 255
                 metrics["two_point_correlation"]['train'].append(two_point_correlation.two_point_correlation(np_array))
 
-                #CHANGES HERE
+                #changed cld preprocessing to binary and added chords
                 binary = np_array > thresh
                 chords = ps.filters.apply_chords(binary)
                 metrics["chord_length_distribution"]['train'].append(ps.metrics.chord_length_distribution(chords))
@@ -289,7 +326,7 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
                 np_array = (np_array > thresh).astype(np.uint8) * 255
                 metrics["two_point_correlation"]['test'].append(two_point_correlation.two_point_correlation(np_array))
                 
-                #CHANGES HERE
+                #changed cld preprocessing to binary and added chords
                 binary = np_array > thresh
                 chords = ps.filters.apply_chords(binary)
                 metrics["chord_length_distribution"]['test'].append(ps.metrics.chord_length_distribution(chords))
