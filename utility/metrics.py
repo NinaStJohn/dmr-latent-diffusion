@@ -209,24 +209,24 @@ def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, f
 
     # Save data to CSV
     df1 = pd.DataFrame({
-        'real_bin_centers': train_bin_centers,
-        f'{first_label}_mean_pdf': train_mean_pdf,
-        f'{first_label}_min_pdf': train_min_pdf,
-        f'{first_label}_max_pdf': train_max_pdf,
+        'bin_center': train_bin_centers,
+        'mean_pdf': train_mean_pdf,
+        'min_pdf': train_min_pdf,
+        'max_pdf': train_max_pdf,
 
-        f'{first_label}_mean_cdf': train_mean_cdf,
-        f'{first_label}_min_cdf': train_min_cdf,
-        f'{first_label}_max_cdf': train_max_cdf,
+        'mean_cdf': train_mean_cdf,
+        'min_cdf': train_min_cdf,
+        'max_cdf': train_max_cdf,
     })
     df2 = pd.DataFrame({
-        'synthetic_bin_centers': test_bin_centers,
-        f'{second_label}_mean_pdf': test_mean_pdf,
-        f'{second_label}_min_pdf': test_min_pdf,
-        f'{second_label}_max_pdf': test_max_pdf,
+        'bin_center': test_bin_centers,
+        'mean_pdf': test_mean_pdf,
+        'min_pdf': test_min_pdf,
+        'max_pdf': test_max_pdf,
 
-        f'{second_label}_mean_cdf': test_mean_cdf,
-        f'{second_label}_min_cdf': test_min_cdf,
-        f'{second_label}_max_cdf': test_max_cdf
+        'mean_cdf': test_mean_cdf,
+        'min_cdf': test_min_cdf,
+        'max_cdf': test_max_cdf
     })
     df1.to_csv(os.path.join(metrics_folder, f"{metric_name}_{first_label}.csv"), index=False)
     df2.to_csv(os.path.join(metrics_folder, f"{metric_name}_{second_label}.csv"), index=False)
