@@ -107,7 +107,7 @@ def normalized_error(x, real_values, synth_values):
     synth_values = np.asarray(synth_values, dtype=float)
 
     if not( len(x) == len(real_values) == len(synth_values)):
-        raise ValueError("x, real, synth vlause must have equal lengths")
+        raise ValueError("x, real, synth values must have equal lengths")
 
     if (len(x) < 2):
         return np.nan
@@ -128,6 +128,8 @@ def normalized_error(x, real_values, synth_values):
     x = x[sort_indices]
     real_values = real_values[sort_indices]
     synth_values = synth_values[sort_indices]
+
+    
 
     difference_area = np.trapz(np.abs(real_values - synth_values), x,)
     real_area = np.trapz(np.abs(real_values), x,)
