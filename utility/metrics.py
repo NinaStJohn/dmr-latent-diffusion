@@ -15,13 +15,16 @@ from torchvision import models, transforms
 from scipy.ndimage import gaussian_filter1d
 import sys
 sys.path.append('.')
+import skimage
+
+"""
 import two_point_correlation
 import chord_length_distribution
 import lineal_path_distribution
 import pore_size_distribution
-import skimage
+"""
 
-# defining fixed axis limits to make graph scaling comparable across strain classes, 
+# defining fixed axis limits and ticks to make graph scaling comparable across strain classes, 
 AXIS_LIMITS = {
     "Two Point Correlation": {
         "xlim": (-10, 1100),
@@ -43,7 +46,7 @@ AXIS_LIMITS = {
 PDF_TICKS = {
     "Lineal Path Distribution": {
         "xticks": [0, 50, 100, 150, 200, 250],
-        "yticks": [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+        "yticks": [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0],
     },
     "Chord Length Distribution": {
         "xticks": [0, 50, 100, 150, 200, 250, 300],
@@ -51,7 +54,7 @@ PDF_TICKS = {
     },
     "Two Point Correlation": {
         "xticks": [0, 200, 400, 600, 800, 1000],
-        "yticks": [1e-3, 1e-2, 1e-1, 1e0],
+        "yticks": [1e-3, 1e-2, 1e-1, 1e0,],
     }
 }
 
@@ -180,19 +183,15 @@ def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, f
     second_label = 'Synthetic' if train_folder else 'Reconstructed'
 
     def compute_mean_and_range(dataset):
-        bin_centers = np.concatenate([d.bin_centers for d in dataset])
-        pdf = np.concatenate([d.pdf for d in dataset])
-        cdf = np.concatenate([d.cdf for d in dataset])
-        
-        unique_bins = np.unique(bin_centers)
-        mean_pdf = np.array([np.mean(pdf[bin_centers == b]) for b in unique_bins])
-        mean_cdf = np.array([np.mean(cdf[bin_centers == b]) for b in unique_bins])
+        #define common grid spanning full range of all images
+        all_bins = np.concatenate([d.bin_centers for d in dataset])
+        grid = np.linspace(all_bins.min(), all_bins.max(), 200)
 
-        min_pdf = np.array([np.min(pdf[bin_centers == b]) for b in unique_bins])
-        max_pdf = np.array([np.max(pdf[bin_centers == b]) for b in unique_bins])
+        pdfs = np.array([np.interp(grid,d.bin_centers, d.pdf, left=0, right=0) for d in dataset])
+        cdfs = np.array([np.interp(grid, d.bin_centers, d.cdf, left=1, right = 0) for d in dataset])
 
-        min_cdf = np.array([np.min(cdf[bin_centers == b]) for b in unique_bins])
-        max_cdf = np.array([np.max(cdf[bin_centers == b]) for b in unique_bins])
+        mean_pdf, min_pdf, max_pdf = pdfs.mean(0), pdfs.min(0), pdfs.max(0)
+        mean_cdf, min_cdf, max_cdf = cdfs.mean(0), cdfs.min(0), cdfs.max(0)
 
         # Apply Gaussian smoothing
         mean_pdf = gaussian_filter1d(mean_pdf, sigma=sigma)
@@ -202,7 +201,7 @@ def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, f
         min_cdf = gaussian_filter1d(min_cdf, sigma=sigma)
         max_cdf = gaussian_filter1d(max_cdf, sigma=sigma)
 
-        return unique_bins, mean_pdf, min_pdf, max_pdf, mean_cdf, min_cdf, max_cdf
+        return grid, mean_pdf, min_pdf, max_pdf, mean_cdf, min_cdf, max_cdf
 
     train_bin_centers, train_mean_pdf, train_min_pdf, train_max_pdf, train_mean_cdf, train_min_cdf, train_max_cdf = compute_mean_and_range(data['train'])
     test_bin_centers, test_mean_pdf, test_min_pdf, test_max_pdf, test_mean_cdf, test_min_cdf, test_max_cdf = compute_mean_and_range(data['test'])
@@ -269,24 +268,26 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if train_folder:
-        train_images = load_images(train_folder, "test")
-        test_images = load_images(test_folder, "test")
+        real_images = load_images(train_folder, "test")
+        synth_images = load_images(test_folder, "test")
 
         print("Images loaded")
 
+        # Calculate FID TODO: CHECK THIS!!
         model = models.inception_v3(pretrained=True, transform_input=False)
         model.fc = nn.Identity() 
         model.to(device)
         model.eval()
 
         print("Getting activations")
-        act_real = get_activations(train_images, model, device)
-        act_gen = get_activations(test_images, model, device)
+        act_real = get_activations(real_images, model, device)
+        act_gen = get_activations(synth_images, model, device)
 
         fid = calculate_fid(act_real, act_gen)
         print(f"FID: {fid}")
 
-    if not fid_only:
+    # Calculate rest of metrics if not only getting FID
+    if not fid_only: 
         os.makedirs(metrics_folder, exist_ok=True)
         metrics = {
             "two_point_correlation": {'train': [], 'test': []},
@@ -297,39 +298,76 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
 
         if train_folder:
             print("Beginning metric calculations for training images")
-            for i, im in enumerate(train_images):
-                print(f"train: {i + 1}/{len(train_images)}")
+            for i, im in enumerate(real_images):
+                print(f"train: {i + 1}/{len(real_images)}")
                 np_array = np.array(im.convert('L'))
-                thresh = skimage.filters.threshold_otsu(np_array)
-
-                metrics["pore_size_distribution"]['train'].append(ps.metrics.pore_size_distribution(np_array))
-                metrics["lineal_path_distribution"]['train'].append(ps.metrics.lineal_path_distribution(np_array))
-
-                np_array = (np_array > thresh).astype(np.uint8) * 255
-                metrics["two_point_correlation"]['train'].append(two_point_correlation.two_point_correlation(np_array))
-
-                #changed cld preprocessing to binary and added chords
-                binary = np_array > thresh
-                chords = ps.filters.apply_chords(binary)
-                metrics["chord_length_distribution"]['train'].append(ps.metrics.chord_length_distribution(chords))
-
-            print("Beginning metric calculations for test images")
-            for i, im in enumerate(test_images):
-                print(f"test: {i + 1}/{len(test_images)}")
-                np_array = np.array(im.convert('L'))
-                thresh = skimage.filters.threshold_otsu(np_array)
-
-                # moving line to make things work - good lord 
-                metrics["pore_size_distribution"]['test'].append(ps.metrics.pore_size_distribution(np_array))
-                metrics["lineal_path_distribution"]['test'].append(ps.metrics.lineal_path_distribution(np_array))
-
-                np_array = (np_array > thresh).astype(np.uint8) * 255
-                metrics["two_point_correlation"]['test'].append(two_point_correlation.two_point_correlation(np_array))
                 
-                #changed cld preprocessing to binary and added chords
+                #threshold RGB image into binary image
+                thresh = skimage.filters.threshold_otsu(np_array)
                 binary = np_array > thresh
+
+                #calc 2pc from binary img
+                metrics["two_point_correlation"]['train'].append(ps.metrics.two_point_correlation(binary))
+
+                #Note: since the strain is isotropic, we can sample on both axis and get representations of the same function
+                # We can combine these for larger sample size and thus less noisy results
+                paths_x = ps.filters.distance_transform_lin(binary, mode="forward", axis=0)
+                paths_y = ps.filters.distance_transform_lin(binary, mode="forward", axis=1)
+                combined = np.concatenate([paths_x[binary], paths_y[binary]])
+                #calculate lineal path distribution
+                lpf = ps.metrics.lineal_path_distribution(combined, bins = 40)
+                metrics["lineal_path_distribution"]['train'].append(lpf)
+                
+                # apply chords filter and calc cld
                 chords = ps.filters.apply_chords(binary)
-                metrics["chord_length_distribution"]['test'].append(ps.metrics.chord_length_distribution(chords))
+                cld = ps.metrics.chord_length_distribution(chords)
+                metrics["chord_length_distribution"]['train'].append(cld)
+
+                # apply local thickness filter and calc psd
+                mip = ps.filters.local_thickness(binary)        # OR ps.filters.porosimetry(binary)
+                psd = ps.metrics.pore_size_distribution(mip, bins = 40)
+                metrics["pore_size_distribution"]['train'].append(psd)
+
+
+                #TEST DIAGNOSTIC
+                
+                print(real_images[i].size)
+
+                """d = metrics["chord_length_distribution"]["train"][i]
+                a = metrics["two_point_correlation"]["train"][i]
+                print(a.distance.min(), a.distance.max())
+                print("bin_edges:", d.bin_edges)
+                print("bin_widths:", d.bin_widths)
+                print("pdf:", d.pdf)
+                print("cdf:", d.cdf)
+                print("relfreq:", d.relfreq)"""
+            
+            print("Beginning metric calculations for synthetic images") # repeat analysis on synthetic images
+            for i, im in enumerate(synth_images):
+                print(f"test: {i + 1}/{len(synth_images)}")
+                np_array = np.array(im.convert('L'))
+                thresh = skimage.filters.threshold_otsu(np_array)
+                binary = np_array > thresh
+
+                metrics["two_point_correlation"]['test'].append(ps.metrics.two_point_correlation(binary))
+
+                paths_x = ps.filters.distance_transform_lin(binary, mode="forward", axis=0)
+                paths_y = ps.filters.distance_transform_lin(binary, mode="forward", axis=1)
+                combined = np.concatenate([paths_x[binary], paths_y[binary]])
+                lpf = ps.metrics.lineal_path_distribution(combined, bins = 40)
+                metrics["lineal_path_distribution"]['test'].append(lpf)
+                
+                chords = ps.filters.apply_chords(binary)
+                cld = ps.metrics.chord_length_distribution(chords)
+                metrics["chord_length_distribution"]['test'].append(cld)
+
+                mip = ps.filters.local_thickness(binary)
+                psd = ps.metrics.pore_size_distribution(mip, bins = 40)
+                metrics["pore_size_distribution"]['test'].append(psd)
+
+                print(synth_images[i].size) 
+
+        #branch for single image analysis
         else:
             print("Beginning metric calculations for original image")
             im = Image.open(org_image)
@@ -354,7 +392,7 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
             metrics["chord_length_distribution"]['test'].append(chord_length_distribution.chord_length_distribution(np_array))
     
 
-
+        #plot metrics using matplot
         plot_metric(metrics["two_point_correlation"]['train'], metrics["two_point_correlation"]['test'], "Two Point Correlation", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
         plot_pdf_cdf_bar(metrics["pore_size_distribution"], "Pore Size Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
         plot_pdf_cdf_bar(metrics["lineal_path_distribution"], "Lineal Path Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
