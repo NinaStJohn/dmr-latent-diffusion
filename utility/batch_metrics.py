@@ -23,7 +23,6 @@ def main():
     parser.add_argument("--output_dir", required=True, help="Folder to save metrics results.")
     parser.add_argument("--metrics_script", default="metrics.py",
                         help="Path to metrics.py script (default: metrics.py in current dir).")
-    parser.add_argument("--fid_only", action="store_true", help="Only compute FID (skip pore metrics).")
     parser.add_argument("--thresh_method", default="otsu", help="Thresholding method (e.g. otsu, sauvola).")
     parser.add_argument("--pores_are_bright", action="store_true", help="If pores are bright.")
     parser.add_argument("--target_porosity", type=float, default=None, help="Target porosity for match_porosity.")
@@ -79,8 +78,6 @@ def main():
             "--test_folder", str(test_path),
             "--metrics_folder", str(class_out)
         ]
-        if args.fid_only:
-            cmd.append("--fid_only")
         if args.pores_are_bright:
             cmd.append("--pores_are_bright")
         if args.fixed_axis_scaling:
