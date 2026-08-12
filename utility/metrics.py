@@ -99,12 +99,14 @@ def calculate_fid(act1, act2):
     fid = ssdiff + np.trace(sigma1 + sigma2 - 2.0 * covmean)
     return fid
 
-
-def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder, fixed_axis_scaling=False):
+#plot a metric with guaranteed same domain as real images: 2pc
+def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder, fixed_axis_scaling=False, model_name=None):
     print("Plotting", metric_name)
     fig, ax = plt.subplots(1, 1, figsize=[6, 6])
-    first_label = 'Real' if train_folder else 'Original'
-    second_label = 'Synthetic' if train_folder else 'Reconstructed'
+    first_label = 'Real'
+    second_label = 'Synthetic'
+    #append model name to second label if provided
+    second_label = f"{second_label} ({model_name})" if model_name else second_label
 
     train_distances = []
     train_probabilities = []
@@ -172,15 +174,18 @@ def plot_metric(train_data, test_data, metric_name, metrics_folder, train_folder
     # ax.set_xlabel("distance")
     # ax.set_ylabel("probability")
     ax.legend()
-    # fig.suptitle(metric_name)
-    fig.savefig(os.path.join(metrics_folder, f"{metric_name}.png"))
+    title = f"{metric_name} ({model_name})" if model_name else metric_name
+    fig.suptitle(title)
+    fig.savefig(os.path.join(metrics_folder, f"{title.replace(' ', '_')}.png"))
     
-
-def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, fixed_axis_scaling=False):
+#plot a metric with possible differing domains: psd, lpd, cld
+def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, fixed_axis_scaling=False, model_name=None):
     print("Plotting", metric_name)
     fig, ax = plt.subplots(1, 2, figsize=[7, 4])
-    first_label = 'Real' if train_folder else 'Original'
-    second_label = 'Synthetic' if train_folder else 'Reconstructed'
+    first_label = 'Real'
+    second_label = 'Synthetic'
+    #append model name to second label if provided
+    second_label = f"{second_label} ({model_name})" if model_name else second_label
 
     def compute_mean_and_range(dataset):
         #define common grid spanning full range of all images
@@ -227,8 +232,8 @@ def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, f
         'min_cdf': test_min_cdf,
         'max_cdf': test_max_cdf
     })
-    df1.to_csv(os.path.join(metrics_folder, f"{metric_name}_{first_label}.csv"), index=False)
-    df2.to_csv(os.path.join(metrics_folder, f"{metric_name}_{second_label}.csv"), index=False)
+    df1.to_csv(os.path.join(metrics_folder, f"{metric_name}_Real.csv"), index=False)
+    df2.to_csv(os.path.join(metrics_folder, f"{metric_name}_Synthetic.csv"), index=False)
 
     ax[0].fill_between(train_bin_centers, train_min_pdf, train_max_pdf, color='blue', alpha=0.2, label=f'Range_{first_label}')
     ax[0].fill_between(test_bin_centers, test_min_pdf, test_max_pdf, color='red', alpha=0.2, label=f'Range_{second_label}')
@@ -260,11 +265,12 @@ def plot_pdf_cdf_bar(data, metric_name, metrics_folder, train_folder, sigma=2, f
             ax[0].set_xticks(ticks["xticks"])
             ax[0].set_yticks(ticks["yticks"])
 
-    fig.suptitle(metric_name)
-    fig.savefig(os.path.join(metrics_folder, f"{metric_name}.png"))
+    title = f"{metric_name} ({model_name})" if model_name else metric_name
+    fig.suptitle(title)
+    fig.savefig(os.path.join(metrics_folder, f"{title.replace(' ', '_')}.png"))
 
 
-def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_only, fixed_axis_scaling=False):
+def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_only, fixed_axis_scaling=False, model_name=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if train_folder:
@@ -328,19 +334,6 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
                 psd = ps.metrics.pore_size_distribution(mip, bins = 40)
                 metrics["pore_size_distribution"]['train'].append(psd)
 
-
-                #TEST DIAGNOSTIC
-                
-                print(real_images[i].size)
-
-                """d = metrics["chord_length_distribution"]["train"][i]
-                a = metrics["two_point_correlation"]["train"][i]
-                print(a.distance.min(), a.distance.max())
-                print("bin_edges:", d.bin_edges)
-                print("bin_widths:", d.bin_widths)
-                print("pdf:", d.pdf)
-                print("cdf:", d.cdf)
-                print("relfreq:", d.relfreq)"""
             
             print("Beginning metric calculations for synthetic images") # repeat analysis on synthetic images
             for i, im in enumerate(synth_images):
@@ -363,9 +356,7 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
 
                 mip = ps.filters.local_thickness(binary)
                 psd = ps.metrics.pore_size_distribution(mip, bins = 40)
-                metrics["pore_size_distribution"]['test'].append(psd)
-
-                print(synth_images[i].size) 
+                metrics["pore_size_distribution"]['test'].append(psd) 
 
         #branch for single image analysis
         else:
@@ -393,10 +384,10 @@ def main(train_folder, test_folder, org_image, rec_image, metrics_folder, fid_on
     
 
         #plot metrics using matplot
-        plot_metric(metrics["two_point_correlation"]['train'], metrics["two_point_correlation"]['test'], "Two Point Correlation", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
-        plot_pdf_cdf_bar(metrics["pore_size_distribution"], "Pore Size Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
-        plot_pdf_cdf_bar(metrics["lineal_path_distribution"], "Lineal Path Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
-        plot_pdf_cdf_bar(metrics["chord_length_distribution"], "Chord Length Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling)
+        plot_metric(metrics["two_point_correlation"]['train'], metrics["two_point_correlation"]['test'], "Two Point Correlation", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling, model_name=model_name)
+        plot_pdf_cdf_bar(metrics["pore_size_distribution"], "Pore Size Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling, model_name=model_name)
+        plot_pdf_cdf_bar(metrics["lineal_path_distribution"], "Lineal Path Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling, model_name=model_name)
+        plot_pdf_cdf_bar(metrics["chord_length_distribution"], "Chord Length Distribution", metrics_folder, train_folder, fixed_axis_scaling=fixed_axis_scaling, model_name=model_name)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compute and plot metrics for GAN generated images.")
@@ -407,6 +398,7 @@ if __name__ == "__main__":
     parser.add_argument("--metrics_folder", type=str, required=True, help="Folder to save metrics plots")
     parser.add_argument("--fid_only", action="store_true")
     parser.add_argument("--fixed_axis_scaling", action="store_true", help="Plot all graphs with same axis scaling (no autoscaling)")
+    parser.add_argument("--model_name", type=str, help="Model name for graph titles")
 
     args = parser.parse_args()
 

@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--sauvola_window", type=int, default=101, help="Window size for Sauvola.")
     parser.add_argument("--sauvola_k", type=float, default=0.2, help="k param for Sauvola.")
     parser.add_argument("--fixed_axis_scaling", action="store_true", help="Plot all graphs with same axis scaling (no autoscaling)")
+    parser.add_argument("--model_name", default=None, help="Optional model name for graph labels & titles.")
     args = parser.parse_args()
 
     train_root = Path(args.train_dir)
@@ -86,6 +87,12 @@ def main():
             cmd.append("--fixed_axis_scaling")
         if args.target_porosity is not None:
             cmd += ["--target_porosity", str(args.target_porosity)]
+        if args.model_name is not None:
+            cmd += ["--model_name", str(args.model_name)]
+        if args.thresh_method:
+            cmd += ["--thresh_method", str(args.thresh_method)]
+        if args.thresh_method.lower() == "sauvola":
+            cmd += ["--sauvola_window", str(args.sauvola_window), "--sauvola_k", str(args.sauvola_k)]
 
         print(" ".join(cmd))
         try:
