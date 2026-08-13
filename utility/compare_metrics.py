@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import wasserstein_distance
 
 def read_pdf_pair(class_dir, metric_name):
     #read the real and synthetic pdf values from the two csv files
@@ -98,49 +99,8 @@ def read_2pc(class_dir):
 
     return x, real_values, synthetic_values
 
-
-def normalized_error(x, real_values, synth_values):
-    #compute the normalized area btwn the real and synth curves
-
-    x = np.asarray(x, dtype=float)
-    real_values = np.asarray(real_values, dtype=float)
-    synth_values = np.asarray(synth_values, dtype=float)
-
-    if not( len(x) == len(real_values) == len(synth_values)):
-        raise ValueError("x, real, synth values must have equal lengths")
-
-    if (len(x) < 2):
-        return np.nan
-    
-    finite_mask = (
-        np.isfinite(x) & np.isfinite(real_values) & np.isfinite(synth_values)
-    )
-
-    x = x[finite_mask]
-    real_values = real_values[finite_mask]
-    synth_values = synth_values[finite_mask]
-
-    if (len(x) < 2):
-        return np.nan
-
-    sort_indices = np.argsort(x)
-
-    x = x[sort_indices]
-    real_values = real_values[sort_indices]
-    synth_values = synth_values[sort_indices]
-
-    
-
-    difference_area = np.trapz(np.abs(real_values - synth_values), x,)
-    real_area = np.trapz(np.abs(real_values), x,)
-
-    if np.isclose(real_area, 0.0):
-        return np.nan
-
-    return difference_area/ real_area
-
-
-def collect_model_errors(metrics_dir: Path, model_name: str) -> pd.DataFrame:
+#calc wasserstein distance for each strain class for one model
+def collect_model_wd(metrics_dir: Path, model_name: str) -> pd.DataFrame:
     strain_classes = [
         "class_0",
         "class_1",
@@ -161,7 +121,7 @@ def collect_model_errors(metrics_dir: Path, model_name: str) -> pd.DataFrame:
         
         print(f"Reading metrics from: {class_dir}")
 
-        #for each strain class, read each csv and compute normalized error
+        #for each strain class, read each csv and compute wasserstein distance
         # cld, lpf, and pore size are all separated into two csv's for real and synthetic
         # 2pc has one csv for both real and synthetic
 
@@ -170,32 +130,32 @@ def collect_model_errors(metrics_dir: Path, model_name: str) -> pd.DataFrame:
         psd_x, psd_real, psd_synth = read_pdf_pair(class_dir, "Pore Size Distribution")
         tpc_x, tpc_real, tpc_synth = read_2pc(class_dir)
 
-        cld_err = normalized_error(cld_x, cld_real, cld_synth)
-        lpf_err = normalized_error(lpf_x, lpf_real, lpf_synth)
-        psd_err = normalized_error(psd_x, psd_real, psd_synth)
-        tpc_err = normalized_error(tpc_x, tpc_real, tpc_synth)
+        cld_wd = wasserstein_distance(cld_x, cld_real, cld_synth)
+        lpf_wd = wasserstein_distance(lpf_x, lpf_real, lpf_synth)
+        psd_wd = wasserstein_distance(psd_x, psd_real, psd_synth)
+        tpc_wd = wasserstein_distance(tpc_x, tpc_real, tpc_synth)
 
         rows.append({
             "model": model_name,
             "strain_class": strain_class,
-            "cld_err": cld_err, 
-            "lpf_err": lpf_err,
-            "psd_err": psd_err, 
-            "tpc_err": tpc_err})
+            "cld_wd": cld_wd, 
+            "lpf_wd": lpf_wd,
+            "psd_wd": psd_wd, 
+            "tpc_wd": tpc_wd})
 
 
     return pd.DataFrame(rows)
 
 
-def plot_normalized_errors(results, output_dir):
-    #plot one bar graph of the normalized error at each strain level for each metric
-    #if a second model's data is provided, its errors will also be graphed at each strain class for comparison
+def plot_comparison(results, output_dir):
+    #plot one bar graph of the wasserstein distance at each strain level for each metric
+    #if a second model's data is provided, its distances will also be graphed at each strain class for comparison
 
     metric_columns = {
-        "cld_err": "Chord Length Distribution",
-        "lpf_err": "Lineal Path Distribution",
-        "psd_err": "Pore Size Distribution",
-        "tpc_err": "Two-Point Correlation",
+        "cld_wd": "Chord Length Distribution",
+        "lpf_wd": "Lineal Path Distribution",
+        "psd_wd": "Pore Size Distribution",
+        "tpc_wd": "Two-Point Correlation",
     }
 
     strain_order = [
@@ -253,8 +213,8 @@ def plot_normalized_errors(results, output_dir):
             ax.set_xticklabels(strain_labels)
 
             ax.set_xlabel("Strain")
-            ax.set_ylabel("Normalized Error")
-            ax.set_title(f"{metric_title}: Normalized Error by Strain")
+            ax.set_ylabel("Wasserstein Distance")
+            ax.set_title(f"{metric_title}: Wasserstein Distance by Strain Class")
 
             ax.grid(axis="y", linestyle="--", alpha=0.4,)
 
@@ -264,7 +224,7 @@ def plot_normalized_errors(results, output_dir):
             fig.tight_layout()
 
             filename = (metric_title.lower().replace(" ", "_"))
-            output_path = (output_dir / f"{filename}_normalized_error.png")
+            output_path = (output_dir / f"{filename}_wd.png")
 
             fig.savefig(output_path, dpi=300, bbox_inches="tight",)
             plt.close(fig)
@@ -275,7 +235,7 @@ def plot_normalized_errors(results, output_dir):
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Compare normalized metric errors across strain classes "
+            "Compare wasserstein distances across strain classes "
             "for one or two generative models."
         )
     )
@@ -338,14 +298,14 @@ def main():
 
     model_results = []
 
-    model_one_results = collect_model_errors(
+    model_one_results = collect_model_wd(
         metrics_dir=args.model_one_dir,
         model_name=args.model_one_name,
     )
     model_results.append(model_one_results)
 
     if args.model_two_dir is not None:
-        model_two_results = collect_model_errors(
+        model_two_results = collect_model_wd(
             metrics_dir=args.model_two_dir,
             model_name=args.model_two_name,
         )
@@ -353,15 +313,15 @@ def main():
 
     results = pd.concat(model_results, ignore_index=True)
 
-    output_csv = args.output_dir / "normalized_errors.csv"
+    output_csv = args.output_dir / "wass_dist.csv"
     results.to_csv(output_csv, index=False)
 
-    plot_normalized_errors(
+    plot_comparison(
         results=results,
         output_dir=args.output_dir,
     )
 
-    print(f"Saved normalized errors to: {output_csv}")
+    print(f"Saved stats to: {output_csv}")
     print(f"Saved plots to: {args.output_dir}")
 
 
