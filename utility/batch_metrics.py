@@ -23,13 +23,18 @@ def main():
     parser.add_argument("--output_dir", required=True, help="Folder to save metrics results.")
     parser.add_argument("--metrics_script", default="metrics.py",
                         help="Path to metrics.py script (default: metrics.py in current dir).")
+    parser.add_argument("--fixed_axis_scaling", action="store_true", help="Plot all graphs with same axis scaling (no autoscaling)")
+    parser.add_argument("--model_name", default=None, help="Optional model name for graph labels & titles.")
+
+    #These args are depreciated. I will leave them here so you can see possible additions to metrics?
+    '''
     parser.add_argument("--thresh_method", default="otsu", help="Thresholding method (e.g. otsu, sauvola).")
     parser.add_argument("--pores_are_bright", action="store_true", help="If pores are bright.")
     parser.add_argument("--target_porosity", type=float, default=None, help="Target porosity for match_porosity.")
     parser.add_argument("--sauvola_window", type=int, default=101, help="Window size for Sauvola.")
     parser.add_argument("--sauvola_k", type=float, default=0.2, help="k param for Sauvola.")
-    parser.add_argument("--fixed_axis_scaling", action="store_true", help="Plot all graphs with same axis scaling (no autoscaling)")
-    parser.add_argument("--model_name", default=None, help="Optional model name for graph labels & titles.")
+    '''
+
     args = parser.parse_args()
 
     train_root = Path(args.train_dir)
@@ -78,18 +83,21 @@ def main():
             "--test_folder", str(test_path),
             "--metrics_folder", str(class_out)
         ]
+        if args.model_name is not None:
+            cmd += ["--model_name", str(args.model_name)]
+        
+        '''
         if args.pores_are_bright:
             cmd.append("--pores_are_bright")
         if args.fixed_axis_scaling:
             cmd.append("--fixed_axis_scaling")
         if args.target_porosity is not None:
             cmd += ["--target_porosity", str(args.target_porosity)]
-        if args.model_name is not None:
-            cmd += ["--model_name", str(args.model_name)]
         if args.thresh_method:
             cmd += ["--thresh_method", str(args.thresh_method)]
         if args.thresh_method.lower() == "sauvola":
             cmd += ["--sauvola_window", str(args.sauvola_window), "--sauvola_k", str(args.sauvola_k)]
+        '''
 
         print(" ".join(cmd))
         try:

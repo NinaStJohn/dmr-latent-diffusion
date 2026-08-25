@@ -357,4 +357,4 @@ if __name__ == "__main__":
 
     if not ((args.train_folder and args.test_folder) or (args.org_image and args.rec_image)):
         parser.error("Either both train_folder and test_folder must be provided, or both org_image and rec_image must be provided.")
-    main(args.train_folder, args.test_folder, args.org_image, args.rec_image, args.metrics_folder, args.fid_only, args.fixed_axis_scaling)
+    main(args.train_folder, args.test_folder, args.org_image, args.rec_image, args.metrics_folder, args.fixed_axis_scaling)
